@@ -47,9 +47,16 @@ static const int pvt_type[] = {
 static const char *pcf_prefix[CH_MAX] = {
 	[CH_SUBSYSTEM] = "FPGA xtasks subsystem",
 };
-
+#define API_CALL(val_) val_
 static const struct pcf_value_label xtasks_ss_values[] = {
-	{ -1, NULL },
+		{API_CALL(1), "Wait tasks"},
+		{API_CALL(2), "Set lock"},
+		{API_CALL(3), "Unset lock"},
+		{API_CALL(5), "Create task"},
+		{78, "Copy-in localmem"},
+		{79, "Copy-out localmem"},
+		{80, "User task"},
+		{-1, NULL},
 };
 
 static const struct pcf_value_label *pcf_labels[CH_MAX] = {

@@ -12,6 +12,8 @@
 #include "thread.h"
 #include "value.h"
 
+#define EV_APICALL 85
+
 static int
 event_s(struct emu *emu)
 {
@@ -33,12 +35,15 @@ event_s(struct emu *emu)
 	uint32_t type = emu->ev->payload->u32[3];
 
 	info("got event %x %x %x\n", value, id, type);
-
+	uint64_t idOrType = id;
+	if (id == EV_APICALL) {
+		idOrType = type;
+	}
 	switch (value) {
 		case 0:
-			return chan_push(ch, value_int64(id));
+			return chan_push(ch, value_int64(idOrType));
 		case 1:
-			return chan_pop(ch, value_int64(id));
+			return chan_pop(ch, value_int64(idOrType));
 		default:
 			err("unknown value %ld", value);
 			return -1;
