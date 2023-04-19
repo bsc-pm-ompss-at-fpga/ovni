@@ -16,6 +16,7 @@ extern struct model_spec model_tampi;
 extern struct model_spec model_mpi;
 extern struct model_spec model_kernel;
 extern struct model_spec model_openmp;
+extern struct model_spec model_xtasks;
 
 static struct model_spec *models[] = {
 	&model_ovni,
@@ -26,6 +27,7 @@ static struct model_spec *models[] = {
 	&model_mpi,
 	&model_kernel,
 	&model_openmp,
+	&model_xtasks,
 	NULL
 };
 

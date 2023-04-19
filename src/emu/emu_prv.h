@@ -31,6 +31,7 @@ enum emu_prv_types {
 	PRV_NANOS6_BREAKDOWN = 41,
 	PRV_KERNEL_CS        = 45,
 	PRV_OPENMP_SUBSYSTEM = 50,
+	PRV_XTASKS_SUBSYSTEM = 51,
 	PRV_RESERVED         = 100,
 };
 
