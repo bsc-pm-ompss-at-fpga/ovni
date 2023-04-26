@@ -49,14 +49,14 @@ static const char *pcf_prefix[CH_MAX] = {
 };
 #define API_CALL(val_) val_
 static const struct pcf_value_label xtasks_ss_values[] = {
-		{API_CALL(1), "Wait tasks"},
-		{API_CALL(2), "Set lock"},
-		{API_CALL(3), "Unset lock"},
-		{API_CALL(5), "Create task"},
-		{78, "Copy-in localmem"},
-		{79, "Copy-out localmem"},
-		{80, "User task"},
-		{-1, NULL},
+	{ API_CALL(1), "Waiting for tasks" },
+	{ API_CALL(2), "Seting lock" },
+	{ API_CALL(3), "Unseting lock" },
+	{ API_CALL(5), "Creating task" },
+	{ 78, "Copying in localmem" },
+	{ 79, "Copying out localmem" },
+	{ 80, "Running user task" },
+	{ -1, NULL },
 };
 
 static const struct pcf_value_label *pcf_labels[CH_MAX] = {
