@@ -10,6 +10,7 @@ struct emu_args {
 	int enable_all_models;
 	char *clock_offset_file;
 	char *tracedir;
+	char *xtasks_config; // FPGA accelerator information
 };
 
 void emu_args_init(struct emu_args *args, int argc, char *argv[]);

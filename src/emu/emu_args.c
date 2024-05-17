@@ -19,7 +19,7 @@ usage(void)
 {
 	rerr("%s -- version %s\n", progname, version);
 	rerr("\n");
-	rerr("Usage: %s [-c offsetfile] [-abdlh] tracedir\n", progname);
+	rerr("Usage: %s [-c offsetfile] [-x xtasksfile] [-abdlh] tracedir\n", progname);
 	rerr("\n");
 	rerr("Options:\n");
 	rerr("  -c offsetfile      Use the given offset file to correct\n");
@@ -31,6 +31,8 @@ usage(void)
 	rerr("  -b                 Enable breakdown model (experimental)\n");
 	rerr("\n");
 	rerr("  -d                 Enable debug output (very verbose)\n");
+	rerr("\n");
+	rerr("  -x xtasksfile      xtasks configuration of fpga accelerators (experimental)\n");
 	rerr("\n");
 	rerr("  -l                 Enable linter mode. Extra tests will\n");
 	rerr("                     be performed.\n");
@@ -53,7 +55,7 @@ emu_args_init(struct emu_args *args, int argc, char *argv[])
 	memset(args, 0, sizeof(struct emu_args));
 
 	int opt;
-	while ((opt = getopt(argc, argv, "abdc:lh")) != -1) {
+	while ((opt = getopt(argc, argv, "abdc:lhx")) != -1) {
 		switch (opt) {
 			case 'c':
 				args->clock_offset_file = optarg;
@@ -69,6 +71,9 @@ emu_args_init(struct emu_args *args, int argc, char *argv[])
 				break;
 			case 'd':
 				enable_debug();
+				break;
+			case 'x':
+				args->xtasks_config = optarg;
 				break;
 			case 'h':
 			default: /* '?' */

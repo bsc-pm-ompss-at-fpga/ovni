@@ -13,6 +13,8 @@ struct recorder;
 struct stream;
 struct trace;
 
+#define MAX_ACCELERATORS  128
+
 /* Map from stream to lpt */
 struct lpt {
 	struct stream *stream; /* Redundancy */
@@ -20,6 +22,17 @@ struct lpt {
 	struct proc *proc;
 	struct thread *thread;
 };
+
+struct acc {
+	char name[128];
+	unsigned int id;
+};
+
+struct info_acc{
+	struct acc accel[MAX_ACCELERATORS];
+	unsigned int n_accelerators;
+};
+
 
 struct system {
 	/* Total counters */
@@ -40,6 +53,7 @@ struct system {
 	struct emu_args *args;
 
 	struct lpt *lpt;
+	struct info_acc *acc_info;
 };
 
 USE_RET int system_init(struct system *sys, struct emu_args *args, struct trace *trace);

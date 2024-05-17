@@ -77,19 +77,22 @@ check_clock_gate(struct trace *trace)
 			continue;
 
 		struct ovni_ev *oev = stream_ev(stream);
-		int64_t sclock = stream_evclock(stream, oev);
+		if (oev) // check there are events
+                {	
+		   int64_t sclock = stream_evclock(stream, oev);
 
-		if (first) {
-			first = 0;
-			t0 = sclock;
-		}
+		   if (first) {
+		      first = 0;
+		      t0 = sclock;
+		   }
 
-		int64_t delta = llabs(t0 - sclock);
-		if (delta > maxgate) {
+		   int64_t delta = llabs(t0 - sclock);
+		   if (delta > maxgate) {
 			double hdelta = ((double) delta) / (3600.0 * 1e9);
 			err("stream %s has starting clock too far: delta=%.2f h",
 					stream->relpath, hdelta);
 			ret = -1;
+		   }
 		}
 	}
 

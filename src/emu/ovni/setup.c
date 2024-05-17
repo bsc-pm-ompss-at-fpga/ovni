@@ -205,12 +205,28 @@ model_ovni_finish(struct emu *emu)
 	int ret = 0;
 
 	/* Ensure that all threads are in the Dead state */
-	for (struct thread *t = sys->threads; t; t = t->gnext) {
+	if (!sys->acc_info)
+        {
+	  for (struct thread *t = sys->threads; t; t = t->gnext) {
 		if (t->state != TH_ST_DEAD) {
+			warn("thread %d is not dead (%s) but it may be an accelerator", t->tid, t->id);
+			ret = 0;
+		}
+	  }
+	}
+	else
+	{
+          unsigned int thread_acc_execution=0;
+	  for (struct thread *t = sys->threads; t; t = t->gnext) {
+		// device accelerators are not threads
+		if (!((thread_acc_execution > 0) && (thread_acc_execution <=sys->acc_info->n_accelerators)) && t->state!=TH_ST_DEAD) {
 			err("thread %d is not dead (%s)", t->tid, t->id);
 			ret = -1;
 		}
+		thread_acc_execution++;
+	  }
 	}
+
 
 	return ret;
 }

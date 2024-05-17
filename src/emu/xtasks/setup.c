@@ -26,6 +26,7 @@ struct model_spec model_xtasks = {
 //	.connect = model_xtasks_connect,
 	.event   = model_xtasks_event,
 	.probe   = model_xtasks_probe,
+	.finish  = model_xtasks_finish,
 };
 
 /* ----------------- channels ------------------ */
@@ -56,6 +57,7 @@ static const struct pcf_value_label xtasks_ss_values[] = {
 	{ 78, "Copying in localmem" },
 	{ 79, "Copying out localmem" },
 	{ 80, "Running user task" },
+	{ 6660, "Reverse Offload user task" },
 	{ -1, NULL },
 };
 
@@ -119,6 +121,20 @@ model_xtasks_create(struct emu *emu)
 	}
 
 	return 0;
+}
+
+int
+model_xtasks_finish(struct emu *emu)
+{
+	/* Skip the check if the we are stopping prematurely */
+	if (!emu->finished)
+		return 0;
+
+	int ret = 0;
+
+	// We don't check FPGA thread are dead
+
+	return ret;
 }
 
 int

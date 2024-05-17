@@ -22,6 +22,7 @@
 #include "uthash.h"
 #include "utlist.h"
 struct bay;
+static void system_get_accelerators(struct system *sys);
 
 static struct thread *
 create_thread(struct proc *proc, const char *tracedir, const char *relpath)
@@ -615,6 +616,18 @@ system_init(struct system *sys, struct emu_args *args, struct trace *trace)
 		return -1;
 	}
 
+	// there are FPGA accelerators
+        if (args->xtasks_config) 
+        { 
+           sys->acc_info = calloc(1,sizeof(struct info_acc));
+	   if (!sys->acc_info)
+	   {
+		err("xtasks info failed");
+		return -1; //panic error
+	   }
+           system_get_accelerators(sys);
+	}
+
 	/* Finaly dump the system */
 	if (0)
 		print_system(sys);
@@ -636,6 +649,40 @@ system_get_lpt(struct stream *stream)
 	return lpt;
 }
 
+static void 
+system_get_accelerators(struct system *sys)
+{
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    fp = fopen(sys->args->xtasks_config, "r");
+    if (fp == NULL)
+      exit(EXIT_FAILURE);
+    if ((read = getline(&line, &len, fp)) == -1) {
+      exit(EXIT_FAILURE);
+    }
+
+    unsigned int n_acc;
+    char name[128];
+ 
+    sys->acc_info->n_accelerators=0;
+    while ((read = getline(&line, &len, fp)) != -1) {
+        sscanf(line, "%*s %u %s %*d",&n_acc, name);
+	for (unsigned int i=0; i<n_acc; i++)
+	{
+            strcpy(sys->acc_info->accel[sys->acc_info->n_accelerators].name,name);
+	    sys->acc_info->accel[sys->acc_info->n_accelerators].id = i+1;
+	    sys->acc_info->n_accelerators++;
+	}
+    }
+
+    fclose(fp);
+    if (line)
+        free(line);
+}
+
 int
 system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 {
@@ -652,6 +699,52 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 		return -1;
 	}
 
+
+	if (sys->args->xtasks_config)
+        {
+	  // First thread is the master thread
+	  // In case of accelerators, 
+	  //          1) Their lines are from 2n line to 2n+num_accelerators  
+	  //          2) Each accelerator instance will be accelerator.i
+	  //          3) Each thread will be thread.appi.i 
+
+          unsigned int thread_acc_execution=0;
+	  unsigned int n_acc=0;
+
+	  for (struct thread *th = sys->threads; th; th = th->gnext) {
+		if (thread_connect(th, bay, rec) != 0) {
+			err("thread_connect failed");
+			return -1;
+		}
+
+		struct prf *prf = pvt_get_prf(pvt_th);
+		char name[128];
+		int appid = th->proc->appid;
+
+		if ((thread_acc_execution > 0) && (thread_acc_execution <=sys->acc_info->n_accelerators)) {
+		   if (snprintf(name, 128, "%s %d.%d", sys->acc_info->accel[n_acc].name, appid, sys->acc_info->accel[n_acc].id) >= 128) {
+		   	err("label too long");
+		   	return -1;
+		   }
+		   n_acc++;
+		}
+	        else
+		{
+		   if (snprintf(name, 128, "TH %d.%d", appid, thread_acc_execution+1-n_acc) >= 128) {
+		   	err("label too long");
+		   	return -1;
+		   }
+		}
+
+		thread_acc_execution++;
+
+		if (prf_add(prf, th->gindex, name) != 0) {
+			err("prf_add failed for thread '%s'", th->id);
+			return -1;
+		}
+	   }
+       }
+       else {
 	for (struct thread *th = sys->threads; th; th = th->gnext) {
 		if (thread_connect(th, bay, rec) != 0) {
 			err("thread_connect failed");
@@ -662,9 +755,12 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 		char name[128];
 		int appid = th->proc->appid;
 		int tid = th->tid;
+
+
+
 		if (snprintf(name, 128, "TH %d.%d", appid, tid) >= 128) {
-			err("label too long");
-			return -1;
+		   	err("label too long");
+		   	return -1;
 		}
 
 		if (prf_add(prf, th->gindex, name) != 0) {
@@ -672,6 +768,7 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 			return -1;
 		}
 	}
+       }
 
 	struct pcf *pcf_th = pvt_get_pcf(pvt_th);
 	if (thread_create_pcf_types(pcf_th) != 0) {
