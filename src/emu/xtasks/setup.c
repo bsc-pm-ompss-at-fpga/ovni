@@ -15,12 +15,20 @@
 #include "pv/prv.h"
 #include "system.h"
 #include "track.h"
+#include "ev_spec.h"
 
 static const char model_name[] = "xtasks";
 enum { model_id = 'X' };
 
+static struct ev_decl model_evlist[] = {
+	{ "Xse", "All events in xtasks" },
+	{ NULL, NULL},
+};
+
 struct model_spec model_xtasks = {
 	.name = model_name,
+	.version = "1.0.0",
+	.evlist  = model_evlist,
 	.model = model_id,
 	.create  = model_xtasks_create,
 //	.connect = model_xtasks_connect,
@@ -106,10 +114,7 @@ static const struct model_thread_spec th_spec = {
 int
 model_xtasks_probe(struct emu *emu)
 {
-	if (emu->system.nthreads == 0)
-		return 1;
-
-	return 0;
+	return model_version_probe(&model_xtasks, emu);
 }
 
 int

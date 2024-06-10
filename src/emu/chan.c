@@ -184,8 +184,8 @@ chan_pop(struct chan *chan, struct value evalue)
 	if (!value_is_equal(value, &evalue)) {
 		err("%s: unexpected value %s (expected %s)",
 				chan->name,
-				value_str(*value),
-				value_str(evalue));
+				value_str(evalue),
+				value_str(*value));
 		return -1;
 	}
 
