@@ -728,5 +728,5 @@ List of events for the model *nosv* with identifier **`V`** at version `2.1.0`:
 List of events for the model *xtasks* with identifier **`X`** at version `1.0.0`:
 <dl>
 <dt><a id="Xse" href="#Xse"><pre>Xse</pre></a></dt>
-<dd>all Xtasks events</dd>
+<dd>All events in xtasks</dd>
 </dl>
