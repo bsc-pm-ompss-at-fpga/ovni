@@ -49,3 +49,7 @@ Track changes in emulator model versions.
     - Ignore old attach events `VH{aA}`.
     - Add new API attach `VA{aA}` and detach `VA{eE}` events.
 - nosv 1.0.0: Initial version.
+
+## Xtasks
+
+- xtasks 1.0.0: Initial version
