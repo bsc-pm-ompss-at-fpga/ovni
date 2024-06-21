@@ -136,11 +136,13 @@
         '';
       });
 
-      armv7 = pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
+      armv7 = (pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
         pname = "ovni-armv7";
         buildInputs = [];
         nativeBuildInputs = [ pkgs.pkgsCross.armv7l-hf-multiplatform.buildPackages.cmake ];
         cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
       });
 
       aarch64 = (pkgs.pkgsCross.aarch64-multiplatform.ovniLocal.overrideAttrs (old: {
@@ -160,7 +162,6 @@
       })).overrideDerivation (old: {
         doCheck = true;
       });
-
     };
   };
 }
