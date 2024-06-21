@@ -55,3 +55,10 @@ build:compilers:
     - nix
   script:
     - nix build -L --no-link .#ovniPackages.compilers
+
+build:arm:
+  stage: build
+  tags:
+    - nix
+  script:
+    - nix build -L --no-link .#ovniPackages.arm

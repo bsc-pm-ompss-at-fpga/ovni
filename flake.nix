@@ -135,6 +135,13 @@
           export ASAN_OPTIONS=detect_leaks=0
         '';
       });
+
+      arm = pkgs.pkgsCross.armv7l-hf-multiplatform.ovni.overrideAttrs (old: {
+        pname = "ovni-nompi";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.armv7l-hf-multiplatform.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      });
     };
   };
 }
