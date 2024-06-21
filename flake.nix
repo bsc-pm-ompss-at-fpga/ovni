@@ -143,6 +143,15 @@
         cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
       });
 
+      aarch64 = (pkgs.pkgsCross.aarch64-multiplatform.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-aarch64";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.aarch64-multiplatform.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
+      });
+
       riscv64 = (pkgs.pkgsCross.riscv64.ovniLocal.overrideAttrs (old: {
         pname = "ovni-riscv64";
         buildInputs = [];
@@ -151,6 +160,7 @@
       })).overrideDerivation (old: {
         doCheck = true;
       });
+
     };
   };
 }
