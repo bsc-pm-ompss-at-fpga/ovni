@@ -143,11 +143,13 @@
         cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
       });
 
-      riscv64 = pkgs.pkgsCross.riscv64.ovniLocal.overrideAttrs (old: {
+      riscv64 = (pkgs.pkgsCross.riscv64.ovniLocal.overrideAttrs (old: {
         pname = "ovni-riscv64";
         buildInputs = [];
         nativeBuildInputs = [ pkgs.pkgsCross.riscv64.buildPackages.cmake ];
         cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
       });
     };
   };
