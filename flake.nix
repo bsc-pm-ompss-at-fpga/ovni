@@ -136,7 +136,7 @@
         '';
       });
 
-      arm = pkgs.pkgsCross.armv7l-hf-multiplatform.ovni.overrideAttrs (old: {
+      arm = pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
         pname = "ovni-nompi";
         buildInputs = [];
         nativeBuildInputs = [ pkgs.pkgsCross.armv7l-hf-multiplatform.buildPackages.cmake ];
