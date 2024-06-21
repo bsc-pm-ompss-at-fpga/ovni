@@ -56,9 +56,16 @@ build:compilers:
   script:
     - nix build -L --no-link .#ovniPackages.compilers
 
-build:arm:
+build:armv7:
   stage: build
   tags:
     - nix
   script:
-    - nix build -L --no-link .#ovniPackages.arm
+    - nix build -L --no-link .#ovniPackages.armv7
+
+build:riscv64:
+  stage: build
+  tags:
+    - nix
+  script:
+    - nix build -L --no-link .#ovniPackages.riscv64

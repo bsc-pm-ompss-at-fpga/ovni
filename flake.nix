@@ -136,10 +136,17 @@
         '';
       });
 
-      arm = pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
-        pname = "ovni-nompi";
+      armv7 = pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-armv7";
         buildInputs = [];
         nativeBuildInputs = [ pkgs.pkgsCross.armv7l-hf-multiplatform.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      });
+
+      riscv64 = pkgs.pkgsCross.riscv64.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-riscv64";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.riscv64.buildPackages.cmake ];
         cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
       });
     };
