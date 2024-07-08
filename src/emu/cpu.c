@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #include "cpu.h"
@@ -17,7 +17,7 @@
 #include "utlist.h"
 #include "value.h"
 
-static const char chan_fmt[] = "cpu%ld.%s";
+static const char chan_fmt[] = "cpu%"PRIi64".%s";
 static const char *chan_name[CPU_CHAN_MAX] = {
 	[CPU_CHAN_NRUN]  = "nrunning",
 	[CPU_CHAN_PID]   = "pid_running",
@@ -83,9 +83,9 @@ set_name(struct cpu *cpu)
 	int n;
 
 	if (cpu->is_virtual)
-		n = snprintf(cpu->name, PATH_MAX, "vCPU %ld.*", i);
+		n = snprintf(cpu->name, PATH_MAX, "vCPU %zu.*", i);
 	else
-		n = snprintf(cpu->name, PATH_MAX, " CPU %ld.%ld", i, j);
+		n = snprintf(cpu->name, PATH_MAX, " CPU %zu.%zu", i, j);
 
 	if (n >= PATH_MAX) {
 		err("cpu name too long");
@@ -220,7 +220,7 @@ cpu_update(struct cpu *cpu)
 
 	/* Only virtual cpus can be oversubscribed */
 	if (cpu->nth_running > 1 && !cpu->is_virtual) {
-		err("physical cpu %s has %d threads running at the same time",
+		err("physical cpu %s has %zd threads running at the same time",
 				cpu->name, cpu->nth_running);
 		return -1;
 	}
@@ -248,7 +248,7 @@ cpu_update(struct cpu *cpu)
 		err("chan_set pid failed");
 		return -1;
 	}
-	dbg("cpu%ld sets th_running to %s",
+	dbg("cpu%"PRIi64" sets th_running to %s",
 			cpu->gindex, value_str(gid_running));
 	if (chan_set(&cpu->chan[CPU_CHAN_THRUN], gid_running) != 0) {
 		err("chan_set gid_running failed");

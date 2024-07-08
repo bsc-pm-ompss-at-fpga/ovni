@@ -15,7 +15,7 @@
       nosv = prev.nosv.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "c698c16c0518e6afc68fb32ee6f1a0f65ca69327";
+        gitCommit = "c668e3bbfae34cd9b8797811b29ae35361b267ca";
       };
       nanos6 = prev.nanos6.override {
         useGit = true;
@@ -37,7 +37,8 @@
       ovniFixed = prev.ovni.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "68fc8b0eba299c3a7fa3833ace2c94933a26749e";
+        # Includes ovni_attr_* API
+        gitCommit = "d1e8a62396ae92934c0b6e248d5f6ff921bef56f";
       };
       # Build with the current source
       ovniLocal = prev.ovni.overrideAttrs (old: rec {
@@ -133,6 +134,33 @@
         preCheck = old.preCheck + ''
           export ASAN_OPTIONS=detect_leaks=0
         '';
+      });
+
+      armv7 = (pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-armv7";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.armv7l-hf-multiplatform.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
+      });
+
+      aarch64 = (pkgs.pkgsCross.aarch64-multiplatform.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-aarch64";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.aarch64-multiplatform.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
+      });
+
+      riscv64 = (pkgs.pkgsCross.riscv64.ovniLocal.overrideAttrs (old: {
+        pname = "ovni-riscv64";
+        buildInputs = [];
+        nativeBuildInputs = [ pkgs.pkgsCross.riscv64.buildPackages.cmake ];
+        cmakeFlags = old.cmakeFlags ++ [ "-DUSE_MPI=OFF" ];
+      })).overrideDerivation (old: {
+        doCheck = true;
       });
     };
   };

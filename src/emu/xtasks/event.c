@@ -34,7 +34,6 @@ event_s(struct emu *emu)
 	uint32_t id = emu->ev->payload->u32[2];
 	uint32_t type = emu->ev->payload->u32[3];
 
-	//info("got event %lX %X %X\n", value, id, type);
 	uint64_t idOrVal = id;
 	// When creating tasks or doing taskwait, the ID is the same (EV_APICALL),
 	// and the value is used to know which one is it (5 create, 1 taskwait)
@@ -47,7 +46,7 @@ event_s(struct emu *emu)
 		case 1:
 			return chan_pop(ch, value_int64(idOrVal));
 		default:
-			err("unknown value %ld", value);
+			err("unknown value %" PRId64, value);
 			return -1;
 	}
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #ifndef TRACK_H
@@ -32,7 +32,7 @@ struct track {
 	struct mux mux;
 };
 
-USE_RET int track_init(struct track *track, struct bay *bay, enum track_type type, int mode, const char *fmt, ...);
+USE_RET int track_init(struct track *track, struct bay *bay, enum track_type type, int mode, const char *fmt, ...) __attribute__((format(printf, 5, 6)));
 USE_RET int track_set_select(struct track *track, struct chan *sel, mux_select_func_t fsel, int64_t ninputs);
 USE_RET int track_set_input(struct track *track, int64_t index, struct chan *inp);
 USE_RET struct chan *track_get_output(struct track *track);

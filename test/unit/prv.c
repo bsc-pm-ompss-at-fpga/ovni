@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #include <stdint.h>
@@ -28,10 +28,7 @@ test_emit(const char *path)
 	OK(prv_open(&prv, NROWS, path));
 
 	for (int i = 0; i < NROWS; i++) {
-		char buf[MAX_CHAN_NAME];
-		sprintf(buf, "testchan.%d", i);
-		chan_init(&chan[i], CHAN_SINGLE, buf);
-
+		chan_init(&chan[i], CHAN_SINGLE, "testchan.%d", i);
 		OK(bay_register(&bay, &chan[i]));
 	}
 
@@ -116,7 +113,7 @@ count_prv_lines(char *fpath, int64_t time, int row0, long type, long value)
 
 		int64_t ftime;
 		long frow1, ftype, fvalue;
-		int ret = sscanf(line, "2:0:1:1:%ld:%ld:%ld:%ld",
+		int ret = sscanf(line, "2:0:1:1:%ld:%" SCNi64 ":%ld:%ld",
 				&frow1, &ftime, &ftype, &fvalue);
 
 		if (ret != 4)

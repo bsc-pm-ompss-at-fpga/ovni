@@ -14,7 +14,7 @@
 #include "extend.h"
 #include "model_cpu.h"
 #include "mux.h"
-#include "nanos6_priv.h"
+#include "nosv_priv.h"
 #include "proc.h"
 #include "pv/pcf.h"
 #include "pv/prf.h"
@@ -23,17 +23,18 @@
 #include "recorder.h"
 #include "sort.h"
 #include "system.h"
+#include "thread.h"
 #include "task.h"
 #include "track.h"
 #include "value.h"
 
 
 static int
-create_cpu(struct bay *bay, struct breakdown_cpu *bcpu, int64_t gindex)
+create_cpu(struct bay *bay, struct nosv_breakdown_cpu *bcpu, int64_t gindex)
 {
 	enum chan_type t = CHAN_SINGLE;
-	chan_init(&bcpu->tr,  t, "nanos6.cpu%"PRIi64".breakdown.tr",  gindex);
-	chan_init(&bcpu->tri, t, "nanos6.cpu%"PRIi64".breakdown.tri", gindex);
+	chan_init(&bcpu->tr,  t, "nosv.cpu%"PRIi64".breakdown.tr",  gindex);
+	chan_init(&bcpu->tri, t, "nosv.cpu%"PRIi64".breakdown.tri", gindex);
 
 	/* Register all channels in the bay */
 	if (bay_register(bay, &bcpu->tr) != 0) {
@@ -48,14 +49,36 @@ create_cpu(struct bay *bay, struct breakdown_cpu *bcpu, int64_t gindex)
 	return 0;
 }
 
+static int
+check_thread_metadata(struct thread *th)
+{
+	if (th->meta == NULL) {
+		err("thread has no metadata");
+		return -1;
+	}
+
+	JSON_Value *val = json_object_dotget_value(th->meta, "nosv.can_breakdown");
+	if (val == NULL) {
+		err("missing nosv.can_breakdown attribute");
+		return -1;
+	}
+
+	if (!json_value_get_boolean(val)) {
+		err("nosv.can_breakdown is false, missing events to enable breakdown");
+		return -1;
+	}
+
+	return 0;
+}
+
 int
-model_nanos6_breakdown_create(struct emu *emu)
+model_nosv_breakdown_create(struct emu *emu)
 {
 	if (emu->args.breakdown == 0)
 		return 0;
 
-	struct nanos6_emu *memu = EXT(emu, '6');
-	struct breakdown_emu *bemu = &memu->breakdown;
+	struct nosv_emu *memu = EXT(emu, 'V');
+	struct nosv_breakdown_emu *bemu = &memu->breakdown;
 
 	/* Count phy cpus */
 	struct system *sys = &emu->system;
@@ -64,13 +87,13 @@ model_nanos6_breakdown_create(struct emu *emu)
 
 	/* Create a new Paraver trace */
 	struct recorder *rec = &emu->recorder;
-	bemu->pvt = recorder_add_pvt(rec, "nanos6-breakdown", nphycpus);
+	bemu->pvt = recorder_add_pvt(rec, "nosv-breakdown", nphycpus);
 	if (bemu->pvt == NULL) {
 		err("recorder_add_pvt failed");
 		return -1;
 	}
 
-	if (sort_init(&bemu->sort, &emu->bay, nphycpus, "nanos6.breakdown.sort") != 0) {
+	if (sort_init(&bemu->sort, &emu->bay, nphycpus, "nosv.breakdown.sort") != 0) {
 		err("sort_init failed");
 		return -1;
 	}
@@ -79,11 +102,18 @@ model_nanos6_breakdown_create(struct emu *emu)
 		if (cpu->is_virtual)
 			continue;
 
-		struct nanos6_cpu *mcpu = EXT(cpu, '6');
-		struct breakdown_cpu *bcpu = &mcpu->breakdown;
+		struct nosv_cpu *mcpu = EXT(cpu, 'V');
+		struct nosv_breakdown_cpu *bcpu = &mcpu->breakdown;
 
 		if (create_cpu(&emu->bay, bcpu, cpu->gindex) != 0) {
 			err("create_cpu failed");
+			return -1;
+		}
+	}
+
+	for (struct thread *th = emu->system.threads; th; th = th->gnext) {
+		if (check_thread_metadata(th) != 0) {
+			err("bad nosv metadata in thread: %s", th->id);
 			return -1;
 		}
 	}
@@ -154,9 +184,9 @@ select_idle(struct mux *mux, struct value value, struct mux_input **input)
 }
 
 static int
-connect_cpu(struct bay *bay, struct nanos6_cpu *mcpu)
+connect_cpu(struct bay *bay, struct nosv_cpu *mcpu)
 {
-	struct breakdown_cpu *bcpu = &mcpu->breakdown;
+	struct nosv_breakdown_cpu *bcpu = &mcpu->breakdown;
 
 	/* Channel aliases */
 	struct chan *ss = &mcpu->m.track[CH_SUBSYSTEM].ch;
@@ -204,13 +234,13 @@ connect_cpu(struct bay *bay, struct nanos6_cpu *mcpu)
 }
 
 int
-model_nanos6_breakdown_connect(struct emu *emu)
+model_nosv_breakdown_connect(struct emu *emu)
 {
 	if (emu->args.breakdown == 0)
 		return 0;
 
-	struct nanos6_emu *memu = EXT(emu, '6');
-	struct breakdown_emu *bemu = &memu->breakdown;
+	struct nosv_emu *memu = EXT(emu, 'V');
+	struct nosv_breakdown_emu *bemu = &memu->breakdown;
 	struct bay *bay = &emu->bay;
 	struct system *sys = &emu->system;
 
@@ -219,8 +249,8 @@ model_nanos6_breakdown_connect(struct emu *emu)
 		if (cpu->is_virtual)
 			continue;
 
-		struct nanos6_cpu *mcpu = EXT(cpu, '6');
-		struct breakdown_cpu *bcpu = &mcpu->breakdown;
+		struct nosv_cpu *mcpu = EXT(cpu, 'V');
+		struct nosv_breakdown_cpu *bcpu = &mcpu->breakdown;
 
 		/* Connect tr and tri channels and muxes */
 		if (connect_cpu(bay, mcpu) != 0) {
@@ -236,13 +266,8 @@ model_nanos6_breakdown_connect(struct emu *emu)
 
 		/* Connect out to PRV */
 		struct prv *prv = pvt_get_prv(bemu->pvt);
-		long type = PRV_NANOS6_BREAKDOWN;
-		long flags = PRV_SKIPDUP;
-
-		/* We may emit zero at the start, when an input changes and all
-		 * the other sort output channels write a zero in the output,
-		 * before the last value is set in prv.c. */
-		flags |= PRV_ZERO;
+		long type = PRV_NOSV_BREAKDOWN;
+		long flags = PRV_SKIPDUP | PRV_ZERO;
 
 		struct chan *out = sort_get_output(&bemu->sort, i);
 		if (prv_register(prv, i, type, bay, out, flags)) {
@@ -257,17 +282,17 @@ model_nanos6_breakdown_connect(struct emu *emu)
 }
 
 int
-model_nanos6_breakdown_finish(struct emu *emu,
+model_nosv_breakdown_finish(struct emu *emu,
 		const struct pcf_value_label **labels)
 {
 	if (emu->args.breakdown == 0)
 		return 0;
 
-	struct nanos6_emu *memu = EXT(emu, '6');
-	struct breakdown_emu *bemu = &memu->breakdown;
+	struct nosv_emu *memu = EXT(emu, 'V');
+	struct nosv_breakdown_emu *bemu = &memu->breakdown;
 	struct pcf *pcf = pvt_get_pcf(bemu->pvt);
-	long typeid = PRV_NANOS6_BREAKDOWN;
-	char label[] = "CPU: Nanos6 Runtime/Idle/Task breakdown";
+	long typeid = PRV_NOSV_BREAKDOWN;
+	char label[] = "CPU: nOS-V Runtime/Idle/Task breakdown";
 	struct pcf_type *pcftype = pcf_add_type(pcf, typeid, label);
 	const struct pcf_value_label *v = NULL;
 
@@ -290,7 +315,7 @@ model_nanos6_breakdown_finish(struct emu *emu,
 	/* Emit task_type values */
 	struct system *sys = &emu->system;
 	for (struct proc *p = sys->procs; p; p = p->gnext) {
-		struct nanos6_proc *proc = EXT(p, '6');
+		struct nosv_proc *proc = EXT(p, 'V');
 		struct task_info *info = &proc->task_info;
 		if (task_create_pcf_types(pcftype, info->types) != 0) {
 			err("task_create_pcf_types failed");
@@ -302,7 +327,7 @@ model_nanos6_breakdown_finish(struct emu *emu,
 	struct prf *prf = pvt_get_prf(bemu->pvt);
 	for (int64_t row = 0; row < bemu->nphycpus; row++) {
 		char name[128];
-		if (snprintf(name, 128, "~CPU %4" PRId64, bemu->nphycpus - row) >= 128) {
+		if (snprintf(name, 128, "~CPU %4"PRIi64, bemu->nphycpus - row) >= 128) {
 			err("label too long");
 			return -1;
 		}
