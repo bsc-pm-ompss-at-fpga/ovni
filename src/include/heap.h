@@ -130,11 +130,7 @@ leading_zeros(size_t x)
 static inline int
 heap_get_move(size_t *node /*out*/)
 {
-	unsigned long long aux_node = *node;
-
-	unsigned long long leading_zeros = __builtin_clzll(aux_node);
-
-	size_t shift = (sizeof(unsigned long long) * 8 - (size_t) leading_zeros - 1);
+	size_t aux_node = *node;
 
 	// Round to previous po2
 	int shift = sizeof(size_t) * 8 - leading_zeros(aux_node) - 1;
@@ -160,8 +156,6 @@ heap_get(heap_head_t *head, size_t node)
 	heap_node_t *current = head->root;
 
 	while (node != 1) {
-//		if (current == NULL)
-//			die("current is NULL");
 		if (heap_get_move(&node))
 			current = current->right;
 		else
