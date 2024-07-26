@@ -3,6 +3,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1060,4 +1061,156 @@ ovni_attr_flush(void)
 		die("thread not initialized");
 
 	thread_metadata_store();
+}
+
+/* Mark API */
+
+/**
+ * Creates a new mark type.
+ *
+ * @param type The mark type that must be in the range 0 to 99, both included.
+ * @param flags An OR of OVNI_MARK_* flags.
+ * @param title The title that will be displayed in Paraver.
+ *
+ * It can be called from multiple threads as long as they all use the same
+ * arguments. Only one thread in all nodes needs to call it to define a type.
+ */
+void
+ovni_mark_type(int32_t type, long flags, const char *title)
+{
+	if (type < 0 || type >= 100)
+		die("type must be in [0,100) range");
+
+	if (!title || title[0] == '\0')
+		die("bad title");
+
+	JSON_Object *meta = get_thread_metadata();
+
+	char key[128];
+	if (snprintf(key, 128, "ovni.mark.%"PRId32, type) >= 128)
+		die("type key too long");
+
+	JSON_Value *val = json_object_dotget_value(meta, key);
+	if (val != NULL)
+		die("type %"PRId32" already defined", type);
+
+	if (snprintf(key, 128, "ovni.mark.%"PRId32".title", type) >= 128)
+		die("title key too long");
+
+	if (json_object_dotset_string(meta, key, title) != 0)
+		die("json_object_dotset_string() failed for title");
+
+	const char *chan_type = flags & OVNI_MARK_STACK ? "stack" : "single";
+	if (snprintf(key, 128, "ovni.mark.%"PRId32".chan_type", type) >= 128)
+		die("chan_type key too long");
+
+	if (json_object_dotset_string(meta, key, chan_type) != 0)
+		die("json_object_dotset_string() failed for chan_type");
+}
+
+/**
+ * Defines a label for the given value.
+ *
+ * @param type The mark type.
+ * @param type The numeric value to which assign a label. The value 0 is
+ * forbidden.
+ * @param label The label that will be displayed in Paraver.
+ *
+ * It only needs to be called once from a thread to globally assign a label to a
+ * given value. It can be called from multiple threads as long as the value for
+ * a given type has only one unique label. Multiple calls with the same
+ * arguments are valid, but with only a distinct label are not.
+ */
+void
+ovni_mark_label(int32_t type, int64_t value, const char *label)
+{
+	if (type < 0 || type >= 100)
+		die("type must be in [0,100) range");
+
+	if (value <= 0)
+		die("value must be >0");
+
+	if (!label || label[0] == '\0')
+		die("bad label");
+
+	JSON_Object *meta = get_thread_metadata();
+
+	char key[128];
+	if (snprintf(key, 128, "ovni.mark.%"PRId32, type) >= 128)
+		die("type key too long");
+
+	JSON_Value *valtype = json_object_dotget_value(meta, key);
+	if (valtype == NULL)
+		die("type %"PRId32" not defined", type);
+
+	if (snprintf(key, 128, "ovni.mark.%"PRId32".labels.%"PRId64, type, value) >= 128)
+		die("value key too long");
+
+	JSON_Value *val = json_object_dotget_value(meta, key);
+	if (val != NULL)
+		die("label '%s' already defined", label);
+
+	if (json_object_dotset_string(meta, key, label) != 0)
+		die("json_object_dotset_string() failed");
+}
+
+/**
+ * Pushes a value into a stacked mark channel.
+ *
+ * @param type The mark type which must be defined with the OVNI_MARK_STACK flag.
+ * @param value The value to be pushed, The value 0 is forbidden.
+ */
+void
+ovni_mark_push(int32_t type, int64_t value)
+{
+	if (value == 0)
+		die("value cannot be 0, type %ld", (long) type);
+
+	struct ovni_ev ev = {0};
+	ovni_ev_set_clock(&ev, ovni_clock_now());
+	ovni_ev_set_mcv(&ev, "OM[");
+	ovni_payload_add(&ev, (uint8_t *) &value, sizeof(value));
+	ovni_payload_add(&ev, (uint8_t *) &type, sizeof(type));
+	ovni_ev_add(&ev);
+}
+
+/**
+ * Pops a value from a stacked mark channel.
+ *
+ * @param type The mark type which must be defined with the OVNI_MARK_STACK flag.
+ * @param value The value to be popped, which must match the current value. The
+ * value 0 is forbidden.
+ */
+void
+ovni_mark_pop(int32_t type, int64_t value)
+{
+	if (value == 0)
+		die("value cannot be 0, type %ld", (long) type);
+
+	struct ovni_ev ev = {0};
+	ovni_ev_set_clock(&ev, ovni_clock_now());
+	ovni_ev_set_mcv(&ev, "OM]");
+	ovni_payload_add(&ev, (uint8_t *) &value, sizeof(value));
+	ovni_payload_add(&ev, (uint8_t *) &type, sizeof(type));
+	ovni_ev_add(&ev);
+}
+
+/**
+ * Sets the value to a normal mark channel.
+ *
+ * @param type The mark type which must be defined without the OVNI_MARK_STACK flag.
+ * @param value The value to be set. The value 0 is forbidden.
+ */
+void
+ovni_mark_set(int32_t type, int64_t value)
+{
+	if (value == 0)
+		die("value cannot be 0, type %ld", (long) type);
+
+	struct ovni_ev ev = {0};
+	ovni_ev_set_clock(&ev, ovni_clock_now());
+	ovni_ev_set_mcv(&ev, "OM=");
+	ovni_payload_add(&ev, (uint8_t *) &value, sizeof(value));
+	ovni_payload_add(&ev, (uint8_t *) &type, sizeof(type));
+	ovni_ev_add(&ev);
 }

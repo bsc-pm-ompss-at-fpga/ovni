@@ -7,6 +7,7 @@
 #include "emu.h"
 #include "emu_prv.h"
 #include "ev_spec.h"
+#include "mark.h"
 #include "model.h"
 #include "model_chan.h"
 #include "model_cpu.h"
@@ -37,12 +38,16 @@ static struct ev_decl model_evlist[] = {
 	PAIR_B("OF[", "OF]", "flushing events to disk")
 	PAIR_E("OU[", "OU]", "unordered event region")
 
+	{ "OM[(i64 value, i32 type)", "push mark with value %{value} from type %{type}" },
+	{ "OM](i64 value, i32 type)", "pop mark with value %{value} from type %{type}" },
+	{ "OM=(i64 value, i32 type)", "set mark with value %{value} from type %{type}" },
+
 	{ NULL, NULL },
 };
 
 struct model_spec model_ovni = {
 	.name    = model_name,
-	.version = "1.0.0",
+	.version = "1.1.0",
 	.evlist  = model_evlist,
 	.model   = model_id,
 	.create  = model_ovni_create,
@@ -175,6 +180,19 @@ model_ovni_create(struct emu *emu)
 		return -1;
 	}
 
+	struct ovni_emu *oemu = calloc(1, sizeof(*oemu));
+	if (oemu == NULL) {
+		err("calloc failed:");
+		return -1;
+	}
+
+	extend_set(&emu->ext, 'O', oemu);
+
+	if (mark_create(emu) != 0) {
+		err("mark_create failed");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -188,6 +206,11 @@ model_ovni_connect(struct emu *emu)
 
 	if (model_cpu_connect(emu, &cpu_spec) != 0) {
 		err("model_cpu_connect failed");
+		return -1;
+	}
+
+	if (mark_connect(emu) != 0) {
+		err("mark_connect failed");
 		return -1;
 	}
 

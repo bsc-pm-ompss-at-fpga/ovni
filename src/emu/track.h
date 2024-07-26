@@ -27,8 +27,8 @@ struct track {
 	int mode;
 	char name[MAX_CHAN_NAME];
 	struct bay *bay;
-	struct chan ch;
-	struct chan *out;
+	struct chan ch; /*< Scratch channel as output when mux is used */
+	struct chan *out; /*< Output channel (ch or the input channel) */
 	struct mux mux;
 };
 
