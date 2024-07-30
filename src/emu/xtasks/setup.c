@@ -21,7 +21,7 @@ static const char model_name[] = "xtasks";
 enum { model_id = 'X' };
 
 static struct ev_decl model_evlist[] = {
-	{ "Xse", "All events in xtasks" },
+	{ "Xse(u64 value, u32 id, u32 type)", "FPGA task id %{value}, event id %{id}, event type %{type}" },
 	{ NULL, NULL},
 };
 
