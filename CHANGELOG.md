@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2024-07-26
+
 ### Changed
 
 - nOS-V model version increased to 2.3.0.
@@ -264,6 +266,7 @@ are used along with some other changes.
 - First ovni release.
 
 [unreleased]: https://jungle.bsc.es/git/rarias/ovni
+[1.10.0]: https://github.com/rodarima/ovni/releases/tag/1.10.0
 [1.9.1]: https://github.com/rodarima/ovni/releases/tag/1.9.1
 [1.9.0]: https://github.com/rodarima/ovni/releases/tag/1.9.0
 [1.8.0]: https://github.com/rodarima/ovni/releases/tag/1.8.0
