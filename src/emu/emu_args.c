@@ -55,7 +55,7 @@ emu_args_init(struct emu_args *args, int argc, char *argv[])
 	memset(args, 0, sizeof(struct emu_args));
 
 	int opt;
-	while ((opt = getopt(argc, argv, "abdc:lhx")) != -1) {
+	while ((opt = getopt(argc, argv, "abdc:lhx:")) != -1) {
 		switch (opt) {
 			case 'c':
 				args->clock_offset_file = optarg;
