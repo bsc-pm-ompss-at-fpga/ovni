@@ -743,7 +743,7 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 
 		thread_acc_execution++;
 
-		if (prf_add(prf, th->gindex, name) != 0) {
+		if (prf_add(prf, (long) th->gindex, name) != -1) {
 			err("prf_add failed for thread '%s'", th->id);
 			return -1;
 		}

@@ -34,11 +34,11 @@ event_s(struct emu *emu)
 	uint32_t id = emu->ev->payload->u32[2];
 	uint32_t type = emu->ev->payload->u32[3];
 
-	uint64_t idOrVal = id;
+	int64_t idOrVal = (int64_t) id;
 	// When creating tasks or doing taskwait, the ID is the same (EV_APICALL),
 	// and the value is used to know which one is it (5 create, 1 taskwait)
 	if (id == EV_APICALL) {
-		idOrVal = value;
+		idOrVal = (int64_t) value;
 	}
 	switch (type) {
 		case 0:

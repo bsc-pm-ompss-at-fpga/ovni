@@ -268,7 +268,7 @@ static void
 write_stream(int fd, void *base, void *dst, const void *src, size_t size)
 {
 	while (size > 0) {
-		off_t offset = (off_t) dst - (off_t) base;
+		off_t offset = (off_t) ((intptr_t) dst - (intptr_t) base);
 		ssize_t written = pwrite(fd, src, size, offset);
 
 		if (written < 0)
