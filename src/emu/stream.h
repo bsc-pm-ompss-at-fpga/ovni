@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #ifndef STREAM_H
@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "common.h"
 #include "heap.h"
+#include "parson.h"
 struct ovni_ev;
 
 struct stream {
@@ -27,13 +28,17 @@ struct stream {
 	int active;
 	int unsorted;
 
-	char path[PATH_MAX];
+	char path[PATH_MAX]; /* To stream dir */
 	char relpath[PATH_MAX]; /* To tracedir */
+	char obspath[PATH_MAX]; /* To obs file */
+	char jsonpath[PATH_MAX]; /* To json file */
 
 	int64_t usize; /* Useful size for events */
 	int64_t offset;
 
 	double progress;
+
+	JSON_Object *meta;
 };
 
 USE_RET int stream_load(struct stream *stream, const char *tracedir, const char *relpath);
@@ -46,5 +51,6 @@ USE_RET int64_t stream_lastclock(struct stream *stream);
         void stream_allow_unsorted(struct stream *stream);
         void stream_data_set(struct stream *stream, void *data);
 USE_RET void *stream_data_get(struct stream *stream);
+USE_RET JSON_Object *stream_metadata(struct stream *stream);
 
 #endif /* STREAM_H */

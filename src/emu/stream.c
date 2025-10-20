@@ -59,7 +59,7 @@ load_stream_fd(struct stream *stream, int fd)
 	}
 
 	int prot = PROT_READ | PROT_WRITE;
-	stream->buf = mmap(NULL, st.st_size, prot, MAP_PRIVATE, fd, 0);
+	stream->buf = mmap(NULL, (size_t) st.st_size, prot, MAP_PRIVATE, fd, 0);
 
 	if (stream->buf == MAP_FAILED) {
 		err("mmap failed:");
@@ -71,41 +71,22 @@ load_stream_fd(struct stream *stream, int fd)
 	return 0;
 }
 
-int
-stream_load(struct stream *stream, const char *tracedir, const char *relpath)
+static int
+load_obs(struct stream *stream, const char *path)
 {
-	memset(stream, 0, sizeof(struct stream));
-
-	if (snprintf(stream->path, PATH_MAX, "%s/%s", tracedir, relpath) >= PATH_MAX) {
-		err("path too long: %s/%s", tracedir, relpath);
-		return -1;
-	}
-
-	/* Allow loading a trace with empty relpath */
-	path_remove_trailing(stream->path);
-
-	if (snprintf(stream->relpath, PATH_MAX, "%s", relpath) >= PATH_MAX) {
-		err("path too long: %s", relpath);
-		return -1;
-	}
-
-	dbg("loading %s", stream->relpath);
-
 	int fd;
-	if ((fd = open(stream->path, O_RDWR)) == -1) {
-		err("open %s failed:", stream->path);
+	if ((fd = open(path, O_RDWR)) == -1) {
+		err("open %s failed:", path);
 		return -1;
 	}
 
 	if (load_stream_fd(stream, fd) != 0) {
-		err("load_stream_fd failed for stream '%s'",
-				stream->path);
+		err("load_stream_fd failed for: %s", path);
 		return -1;
 	}
 
 	if (check_stream_header(stream) != 0) {
-		err("stream '%s' has bad header",
-				stream->path);
+		err("stream has bad header: %s", path);
 		return -1;
 	}
 
@@ -132,6 +113,97 @@ stream_load(struct stream *stream, const char *tracedir, const char *relpath)
 	return 0;
 }
 
+static int
+check_version(JSON_Object *meta)
+{
+	JSON_Value *version_val = json_object_get_value(meta, "version");
+	if (version_val == NULL) {
+		err("missing attribute \"version\"");
+		return -1;
+	}
+
+	int version = (int) json_number(version_val);
+
+	if (version != OVNI_METADATA_VERSION) {
+		err("metadata version mismatch %d (expected %d)",
+				version, OVNI_METADATA_VERSION);
+		return -1;
+	}
+
+	return 0;
+}
+
+static JSON_Object *
+load_json(const char *path)
+{
+	JSON_Value *vmeta = json_parse_file_with_comments(path);
+	if (vmeta == NULL) {
+		err("json_parse_file_with_comments() failed");
+		return NULL;
+	}
+
+	JSON_Object *meta = json_value_get_object(vmeta);
+	if (meta == NULL) {
+		err("json_value_get_object() failed");
+		return NULL;
+	}
+
+	if (check_version(meta) != 0) {
+		err("check_version failed");
+		return NULL;
+	}
+
+	return meta;
+}
+
+/** Loads a stream from disk.
+ *
+ * The relpath must be pointing to a directory with the stream.json and
+ * stream.obs files.
+ */
+int
+stream_load(struct stream *stream, const char *tracedir, const char *relpath)
+{
+	memset(stream, 0, sizeof(struct stream));
+
+	if (snprintf(stream->path, PATH_MAX, "%s/%s", tracedir, relpath) >= PATH_MAX) {
+		err("path too long: %s/%s", tracedir, relpath);
+		return -1;
+	}
+
+	/* Allow loading a trace with empty relpath */
+	path_remove_trailing(stream->path);
+
+	if (snprintf(stream->relpath, PATH_MAX, "%s", relpath) >= PATH_MAX) {
+		err("path too long: %s", relpath);
+		return -1;
+	}
+
+	dbg("loading %s", stream->relpath);
+
+	if (path_append(stream->jsonpath, stream->path, "stream.json") != 0) {
+		err("path_append failed");
+		return -1;
+	}
+
+	if ((stream->meta = load_json(stream->jsonpath)) == NULL) {
+		err("load_json failed for: %s", stream->jsonpath);
+		return -1;
+	}
+
+	if (path_append(stream->obspath, stream->path, "stream.obs") != 0) {
+		err("path_append failed");
+		return -1;
+	}
+
+	if (load_obs(stream, stream->obspath) != 0) {
+		err("load_obs failed");
+		return -1;
+	}
+
+	return 0;
+}
+
 void
 stream_data_set(struct stream *stream, void *data)
 {
@@ -142,6 +214,16 @@ void *
 stream_data_get(struct stream *stream)
 {
 	return stream->data;
+}
+
+/* Is never NULL */
+JSON_Object *
+stream_metadata(struct stream *stream)
+{
+	if (stream->meta == NULL)
+		die("stream metadata is NULL: %s", stream->relpath);
+
+	return stream->meta;
 }
 
 int
@@ -241,7 +323,7 @@ stream_step(struct stream *stream)
 void
 stream_progress(struct stream *stream, int64_t *done, int64_t *total)
 {
-	*done = stream->offset - sizeof(struct ovni_stream_header);
+	*done = stream->offset - (int64_t) sizeof(struct ovni_stream_header);
 	*total = stream->usize;
 }
 

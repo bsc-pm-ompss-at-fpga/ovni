@@ -20,7 +20,7 @@ static int
 html_encode(char *dst, int ndst, const char *src)
 {
 	int j = 0;
-	int nsrc = strlen(src);
+	int nsrc = (int) strlen(src);
 
 	for (int i = 0; i < nsrc; i++) {
 		/* Simple check */
@@ -29,7 +29,7 @@ html_encode(char *dst, int ndst, const char *src)
 			return -1;
 		}
 
-		int c = src[i];
+		char c = src[i];
 		switch (c) {
 			case '&':  strcpy(&dst[j], "&amp;");  j += 5; break;
 			case '"':  strcpy(&dst[j], "&quot;"); j += 6; break;

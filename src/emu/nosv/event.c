@@ -67,6 +67,12 @@ static const int ss_table[256][256][3] = {
 		['U'] = { CHSS, POP,  ST_API_MUTEX_UNLOCK },
 		['b'] = { CHSS, PUSH, ST_API_BARRIER_WAIT },
 		['B'] = { CHSS, POP,  ST_API_BARRIER_WAIT },
+		['o'] = { CHSS, PUSH, ST_API_COND_WAIT },
+		['O'] = { CHSS, POP,  ST_API_COND_WAIT },
+		['g'] = { CHSS, PUSH, ST_API_COND_SIGNAL },
+		['G'] = { CHSS, POP,  ST_API_COND_SIGNAL },
+		['k'] = { CHSS, PUSH, ST_API_COND_BCAST },
+		['K'] = { CHSS, POP,  ST_API_COND_BCAST },
 	},
 	/* FIXME: Move thread type to another channel, like nanos6 */
 	['H'] = {
@@ -324,7 +330,7 @@ update_task_state(struct emu *emu)
 static int
 expand_transition_value(struct emu *emu, int was_running, int runs_now, char *tr_p)
 {
-	char tr = emu->ev->v;
+	char tr = (char) emu->ev->v;
 
 	/* Ensure we don't clobber the value */
 	if (tr == 'X' || tr == 'E') {
@@ -441,7 +447,7 @@ update_task(struct emu *emu)
 	struct body *next = task_get_running(stack);
 
 	/* Update the subsystem channel */
-	if (update_task_ss_channel(emu, emu->ev->v) != 0) {
+	if (update_task_ss_channel(emu, (char) emu->ev->v) != 0) {
 		err("update_task_ss_channel failed");
 		return -1;
 	}
@@ -509,7 +515,7 @@ pre_task(struct emu *emu)
 	switch (emu->ev->v) {
 		case 'C':
 		case 'c':
-			ret = create_task(emu, emu->ev->v);
+			ret = create_task(emu, (char) emu->ev->v);
 			break;
 		case 'x':
 		case 'e':
@@ -546,7 +552,8 @@ pre_type(struct emu *emu)
 	}
 
 	const uint8_t *data = &emu->ev->payload->jumbo.data[0];
-	uint32_t typeid = *(uint32_t *) data;
+	uint32_t typeid;
+	memcpy(&typeid, data, 4); /* May be unaligned */
 	data += 4;
 
 	const char *label = (const char *) data;

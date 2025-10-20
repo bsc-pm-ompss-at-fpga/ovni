@@ -18,7 +18,7 @@ extern "C" {
 #include <string.h>
 #include <sys/types.h>
 
-#define OVNI_METADATA_VERSION 2
+#define OVNI_METADATA_VERSION 3
 
 #define OVNI_TRACEDIR "ovni"
 #define OVNI_MAX_HOSTNAME 512
@@ -30,6 +30,9 @@ extern "C" {
 #define OVNI_STREAM_VERSION 1
 
 #define OVNI_STREAM_EXT ".obs"
+
+/* Version of the ovni model for events */
+#define OVNI_MODEL_VERSION "1.1.0"
 
 /* Follow https://semver.org rules for versioning */
 #define OVNI_LIB_VERSION "@PROJECT_VERSION@"

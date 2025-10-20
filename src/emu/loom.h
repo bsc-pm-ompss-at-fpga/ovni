@@ -12,6 +12,7 @@
 #include "cpu.h"
 #include "extend.h"
 struct proc;
+struct stream;
 
 struct loom {
 	int64_t gindex;
@@ -50,8 +51,10 @@ struct loom {
 	struct extend ext;
 };
 
-USE_RET int loom_matches(const char *relpath);
+USE_RET const char *loom_name(struct stream *s);
 USE_RET int loom_init_begin(struct loom *loom, const char *name);
+USE_RET int loom_load_metadata(struct loom *loom, struct stream *s);
+USE_RET int loom_set_rank_min(struct loom *loom);
 USE_RET int loom_init_end(struct loom *loom);
 USE_RET int loom_add_cpu(struct loom *loom, struct cpu *cpu);
 USE_RET int64_t loom_get_gindex(struct loom *loom);

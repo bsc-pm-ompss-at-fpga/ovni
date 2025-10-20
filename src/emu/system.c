@@ -11,7 +11,6 @@
 #include "cpu.h"
 #include "emu_args.h"
 #include "loom.h"
-#include "metadata.h"
 #include "proc.h"
 #include "pv/prf.h"
 #include "pv/pvt.h"
@@ -25,11 +24,11 @@ struct bay;
 static void system_get_accelerators(struct system *sys);
 
 static struct thread *
-create_thread(struct proc *proc, const char *tracedir, const char *relpath)
+create_thread(struct proc *proc, struct stream *s)
 {
 	int tid;
-	if (thread_relpath_get_tid(relpath, &tid) != 0) {
-		err("cannot get thread tid from %s", relpath);
+	if ((tid = thread_stream_get_tid(s)) < 0) {
+		err("cannot get thread tid from stream: %s", s->relpath);
 		return NULL;
 	}
 
@@ -46,21 +45,13 @@ create_thread(struct proc *proc, const char *tracedir, const char *relpath)
 		return NULL;
 	}
 
-	if (thread_init_begin(thread, relpath) != 0) {
-		err("cannot init thread");
+	if (thread_init_begin(thread, tid) != 0) {
+		err("thread_init_begin failed: %s", s->relpath);
 		return NULL;
 	}
 
-	/* Build metadata path */
-	char mpath[PATH_MAX];
-	if (snprintf(mpath, PATH_MAX, "%s/%s/thread.%d.json",
-				tracedir, proc->id, tid) >= PATH_MAX) {
-		err("path too long");
-		return NULL;
-	}
-
-	if (metadata_load_thread(mpath, thread) != 0) {
-		err("cannot load metadata from %s", mpath);
+	if (thread_load_metadata(thread, s) != 0) {
+		err("thread_load_metadata failed: %s", s->relpath);
 		return NULL;
 	}
 
@@ -73,48 +64,39 @@ create_thread(struct proc *proc, const char *tracedir, const char *relpath)
 }
 
 static struct proc *
-create_proc(struct loom *loom, const char *tracedir, const char *relpath)
+create_proc(struct loom *loom, struct stream *s)
 {
-	int pid;
-	if (proc_relpath_get_pid(relpath, &pid) != 0) {
-		err("cannot get proc pid from %s", relpath);
+	int pid = proc_stream_get_pid(s);
+	if (pid < 0) {
+		err("cannot get proc pid from stream: %s", s->relpath);
 		return NULL;
 	}
 
 	struct proc *proc = loom_find_proc(loom, pid);
-
-	if (proc != NULL)
-		return proc;
-
-	proc = malloc(sizeof(struct proc));
-
 	if (proc == NULL) {
-		err("malloc failed:");
-		return NULL;
+		/* Create a new process */
+
+		proc = malloc(sizeof(struct proc));
+
+		if (proc == NULL) {
+			err("malloc failed:");
+			return NULL;
+		}
+
+		if (proc_init_begin(proc, pid) != 0) {
+			err("proc_init_begin failed: %s", s->relpath);
+			return NULL;
+		}
+
+		if (loom_add_proc(loom, proc) != 0) {
+			err("loom_add_proc failed");
+			return NULL;
+		}
 	}
 
-	if (proc_init_begin(proc, relpath) != 0) {
-		err("proc_init_begin failed");
-		return NULL;
-	}
-
-	/* Build metadata path */
-	char mpath[PATH_MAX];
-
-	if (snprintf(mpath, PATH_MAX, "%s/%s/metadata.json",
-				tracedir, proc->id) >= PATH_MAX) {
-		err("path too long");
-		return NULL;
-	}
-
-	/* Load metadata too */
-	if (metadata_load_proc(mpath, loom, proc) != 0) {
-		err("cannot load metadata from %s", mpath);
-		return NULL;
-	}
-
-	if (loom_add_proc(loom, proc) != 0) {
-		err("loom_add_proc failed");
+	/* The appid is populated from the metadata */
+	if (proc_load_metadata(proc, s) != 0) {
+		err("proc_load_metadata failed");
 		return NULL;
 	}
 
@@ -132,16 +114,11 @@ find_loom(struct system *sys, const char *id)
 }
 
 static struct loom *
-create_loom(struct system *sys, const char *relpath)
+create_loom(struct system *sys, struct stream *s)
 {
-	char name[PATH_MAX];
-	if (snprintf(name, PATH_MAX, "%s", relpath) >= PATH_MAX) {
-		err("path too long: %s", relpath);
-		return NULL;
-	}
-
-	if (strtok(name, "/") == NULL) {
-		err("cannot find first '/': %s", relpath);
+	const char *name = loom_name(s);
+	if (name == NULL) {
+		err("loom_name failed");
 		return NULL;
 	}
 
@@ -162,6 +139,11 @@ create_loom(struct system *sys, const char *relpath)
 
 		DL_APPEND(sys->looms, loom);
 		sys->nlooms++;
+	}
+
+	if (loom_load_metadata(loom, s) != 0) {
+		err("loom_load_metadata failed for stream: %s", s->relpath);
+		return NULL;
 	}
 
 	return loom;
@@ -222,12 +204,34 @@ report_libovni_version(struct system *sys)
 }
 
 static int
+is_thread_stream(struct stream *s)
+{
+	JSON_Object *meta = stream_metadata(s);
+	if (meta == NULL) {
+		err("no metadata for stream: %s", s->relpath);
+		return -1;
+	}
+
+	/* All streams must have a ovni.part attribute */
+	const char *part_type = json_object_dotget_string(meta, "ovni.part");
+
+	if (part_type == NULL) {
+		err("cannot get attribute ovni.part for stream: %s",
+				s->relpath);
+		return -1;
+	}
+
+	if (strcmp(part_type, "thread") == 0)
+		return 1;
+
+	return 0;
+}
+
+static int
 create_system(struct system *sys, struct trace *trace)
 {
-	const char *dir = trace->tracedir;
-
 	/* Allocate the lpt map */
-	sys->lpt = calloc(trace->nstreams, sizeof(struct lpt));
+	sys->lpt = calloc((size_t) trace->nstreams, sizeof(struct lpt));
 	if (sys->lpt == NULL) {
 		err("calloc failed:");
 		return -1;
@@ -235,25 +239,28 @@ create_system(struct system *sys, struct trace *trace)
 
 	size_t i = 0;
 	for (struct stream *s = trace->streams; s ; s = s->next) {
-		if (!loom_matches(s->relpath)) {
+		int ok = is_thread_stream(s);
+		if (ok < 0) {
+			err("is_thread_stream failed");
+			return -1;
+		} else if (ok == 0) {
 			warn("ignoring unknown stream %s", s->relpath);
 			continue;
 		}
 
-		struct loom *loom = create_loom(sys, s->relpath);
+		struct loom *loom = create_loom(sys, s);
 		if (loom == NULL) {
 			err("create_loom failed");
 			return -1;
 		}
 
-		/* Loads metadata too */
-		struct proc *proc = create_proc(loom, dir, s->relpath);
+		struct proc *proc = create_proc(loom, s);
 		if (proc == NULL) {
 			err("create_proc failed");
 			return -1;
 		}
 
-		struct thread *thread = create_thread(proc, dir, s->relpath);
+		struct thread *thread = create_thread(proc, s);
 		if (thread == NULL) {
 			err("create_thread failed");
 			return -1;
@@ -266,14 +273,6 @@ create_system(struct system *sys, struct trace *trace)
 		lpt->thread = thread;
 
 		stream_data_set(s, lpt);
-	}
-
-	/* Ensure all looms have at least one CPU */
-	for (struct loom *l = sys->looms; l; l = l->next) {
-		if (l->ncpus == 0) {
-			err("loom %s has no physical CPUs", l->id);
-			return -1;
-		}
 	}
 
 	return 0;
@@ -374,20 +373,20 @@ init_global_indices(struct system *sys)
 {
 	size_t iloom = 0;
 	for (struct loom *l = sys->looms; l; l = l->next)
-		loom_set_gindex(l, iloom++);
+		loom_set_gindex(l, (int64_t) iloom++);
 
 	sys->nprocs = 0;
 	for (struct proc *p = sys->procs; p; p = p->gnext)
-		proc_set_gindex(p, sys->nprocs++);
+		proc_set_gindex(p, (int64_t) sys->nprocs++);
 
 	sys->nthreads = 0;
 	for (struct thread *t = sys->threads; t; t = t->gnext)
-		thread_set_gindex(t, sys->nthreads++);
+		thread_set_gindex(t, (int64_t) sys->nthreads++);
 
 	sys->ncpus = 0;
 	sys->nphycpus = 0;
 	for (struct cpu *c = sys->cpus; c; c = c->next) {
-		cpu_set_gindex(c, sys->ncpus++);
+		cpu_set_gindex(c, (int64_t) sys->ncpus++);
 		if (!c->is_virtual)
 			sys->nphycpus++;
 	}
@@ -553,6 +552,12 @@ set_sort_criteria(struct system *sys)
 	int some_have = 0;
 	int all_have = 1;
 	for (struct loom *l = sys->looms; l; l = l->next) {
+		/* Set the rank_min for later sorting */
+		if (loom_set_rank_min(l) != 0) {
+			err("loom_set_rank_min failed");
+			return -1;
+		}
+
 		if (l->rank_enabled)
 			some_have = 1;
 		else
@@ -688,13 +693,13 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 {
 	/* Create Paraver traces */
 	struct pvt *pvt_cpu = NULL;
-	if ((pvt_cpu = recorder_add_pvt(rec, "cpu", sys->ncpus)) == NULL) {
+	if ((pvt_cpu = recorder_add_pvt(rec, "cpu", (long) sys->ncpus)) == NULL) {
 		err("recorder_add_pvt failed");
 		return -1;
 	}
 
 	struct pvt *pvt_th = NULL;
-	if ((pvt_th = recorder_add_pvt(rec, "thread", sys->nthreads)) == NULL) {
+	if ((pvt_th = recorder_add_pvt(rec, "thread", (long) sys->nthreads)) == NULL) {
 		err("recorder_add_pvt failed");
 		return -1;
 	}
@@ -763,7 +768,7 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 		   	return -1;
 		}
 
-		if (prf_add(prf, th->gindex, name) != 0) {
+		if (prf_add(prf, (long) th->gindex, name) != 0) {
 			err("prf_add failed for thread '%s'", th->id);
 			return -1;
 		}
@@ -785,7 +790,7 @@ system_connect(struct system *sys, struct bay *bay, struct recorder *rec)
 		}
 
 		struct prf *prf = pvt_get_prf(pvt_cpu);
-		if (prf_add(prf, cpu->gindex, cpu->name) != 0) {
+		if (prf_add(prf, (long) cpu->gindex, cpu->name) != 0) {
 			err("prf_add failed for cpu '%s'", cpu->name);
 			return -1;
 		}

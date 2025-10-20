@@ -15,9 +15,11 @@ chan_init(struct chan *chan, enum chan_type type, const char *fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 
-	int n = ARRAYLEN(chan->name);
+	size_t n = ARRAYLEN(chan->name);
 	int ret = vsnprintf(chan->name, n, fmt, ap);
-	if (ret >= n)
+	if (ret < 0)
+		die("vsnprintf failed");
+	else if ((size_t) ret >= n)
 		die("channel name too long");
 	va_end(ap);
 

@@ -13,8 +13,9 @@ The ovni project implements a fast instrumentation library that records
 small events (starting at 12 bytes) during the execution of programs to
 later investigate how the execution happened.
 
-The instrumentation process is split in two stages: [runtime](runtime)
-tracing and [emulation](emulation/).
+The instrumentation process is split in two stages:
+[runtime](user/runtime/index.md)
+tracing and [emulation](user/emulation/index.md).
 
 During runtime, very short binary events are stored on disk which
 describe what is happening. Once the execution finishes, the events are

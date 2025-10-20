@@ -12,9 +12,9 @@ if(NOT NOSV_FOUND)
   return()
 endif()
 
-# Needed for breakdown
-if("${NOSV_VERSION}" VERSION_LESS "2.3.0")
-  message(FATAL_ERROR "nOS-V version ${NOSV_VERSION} too old, required at least 2.3.0")
+# Needed for nosv_cond
+if("${NOSV_VERSION}" VERSION_LESS "3.1.0")
+  message(FATAL_ERROR "nOS-V version ${NOSV_VERSION} too old, required at least 3.1.0")
 endif()
 
 message(STATUS "Enabling nOS-V RT tests")
@@ -44,6 +44,7 @@ nosv_test(parallel-tasks.c SORT)
 nosv_test(inline.c SORT)
 nosv_test(mutex.c SORT LEVEL 3)
 nosv_test(barrier.c SORT LEVEL 3)
+nosv_test(cond.c SORT LEVEL 3)
 
 # Test multiple instrumentation levels
 nosv_test(several-tasks.c SORT NAME several-tasks-level-0 LEVEL 0)
@@ -62,3 +63,14 @@ nosv_test(several-tasks.c SORT NAME several-tasks-breakdown-level-2 LEVEL 2 BREA
 # From level 3 up the breakdown can be enabled
 nosv_test(several-tasks.c SORT NAME several-tasks-breakdown-level-3 LEVEL 3 BREAKDOWN)
 nosv_test(several-tasks.c SORT NAME several-tasks-breakdown-level-4 LEVEL 4 BREAKDOWN)
+
+include(CheckPerfParanoid)
+if (PERF_PARANOID_KERNEL)
+  message(STATUS "Enabling perf paranoid tests for nOS-V")
+  nosv_test(kernel.c NAME kernel-overflow DRIVER "kernel-overflow.driver.sh")
+  nosv_test(kernel.c NAME kernel-normal   DRIVER "kernel-normal.driver.sh")
+elseif(ENABLE_ALL_TESTS)
+  message(FATAL_ERROR "Cannot enable perf paranoid tests for nOS-V")
+else()
+  message(STATUS "Disabling perf paranoid tests for nOS-V")
+endif()

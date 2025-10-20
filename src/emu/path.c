@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #include "path.h"
@@ -95,7 +95,7 @@ path_keep(char *path, int n)
 void
 path_remove_trailing(char *path)
 {
-	int n = strlen(path);
+	int n = (int) strlen(path);
 	for (int i = n - 1; i >= 0 && path[i] == '/'; i--) {
 		path[i] = '\0';
 	}
@@ -111,4 +111,48 @@ path_filename(const char *path)
 		start++;
 
 	return start;
+}
+
+int
+path_append(char dst[PATH_MAX], const char *src, const char *extra)
+{
+	if (snprintf(dst, PATH_MAX, "%s/%s", src, extra) >= PATH_MAX) {
+		err("path too long: %s/%s", src, extra);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Copy the path src into dst. */
+int
+path_copy(char dst[PATH_MAX], const char *src)
+{
+	if (snprintf(dst, PATH_MAX, "%s", src) >= PATH_MAX) {
+		err("path too long: %s", src);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Strip last component from path */
+void
+path_dirname(char path[PATH_MAX])
+{
+	path_remove_trailing(path);
+	int n = (int) strlen(path);
+	int i;
+	for (i = n - 1; i >= 0; i--) {
+		if (path[i] == '/') {
+			break;
+		}
+	}
+	/* Remove all '/' */
+	for (; i >= 0; i--) {
+		if (path[i] != '/')
+			break;
+		else
+			path[i] = '\0';
+	}
 }

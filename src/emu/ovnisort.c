@@ -74,6 +74,20 @@ ring_add(struct ring *r, struct ovni_ev *ev)
 		r->head = 0;
 }
 
+static void
+ring_check(struct ring *r, long long start)
+{
+	uint64_t last_clock = 0;
+	for (long long i = start; i != r->tail; i = (i + 1) % r->size) {
+		uint64_t clock = r->ev[i]->header.clock;
+		if (clock < last_clock) {
+			die("ring not sorted at i=%lld, last_clock=%"PRIu64" clock=%"PRIu64 ,
+					i, last_clock, clock);
+		}
+		last_clock = clock;
+	}
+}
+
 static ssize_t
 find_destination(struct ring *r, uint64_t clock)
 {
@@ -179,7 +193,7 @@ write_events(struct ovni_ev **table, long n, uint8_t *buf)
 {
 	for (long i = 0; i < n; i++) {
 		struct ovni_ev *ev = table[i];
-		size_t size = ovni_ev_size(ev);
+		size_t size = (size_t) ovni_ev_size(ev);
 		memcpy(buf, ev, size);
 		buf += size;
 
@@ -200,8 +214,8 @@ cmp_ev(const void *a, const void *b)
 	struct ovni_ev *ev1 = *pev1;
 	struct ovni_ev *ev2 = *pev2;
 
-	int64_t clock1 = ev1->header.clock;
-	int64_t clock2 = ev2->header.clock;
+	int64_t clock1 = (int64_t) ev1->header.clock;
+	int64_t clock2 = (int64_t) ev2->header.clock;
 
 	if (clock1 < clock2)
 		return -1;
@@ -223,19 +237,19 @@ sort_buf(uint8_t *src, uint8_t *buf, int64_t bufsize)
 			ev->header.clock);
 
 	/* Create a copy of the array */
-	uint8_t *buf2 = malloc(bufsize);
+	uint8_t *buf2 = malloc((size_t) bufsize);
 	if (buf2 == NULL)
 		die("malloc failed:");
 
-	memcpy(buf2, src, bufsize);
+	memcpy(buf2, src, (size_t) bufsize);
 
 	long n = count_events(buf2, buf2 + bufsize);
-	struct ovni_ev **table = calloc(n, sizeof(struct ovni_ev *));
+	struct ovni_ev **table = calloc((size_t) n, sizeof(struct ovni_ev *));
 	if (table == NULL)
 		die("calloc failed:");
 
 	index_events(table, n, buf2);
-	qsort(table, n, sizeof(struct ovni_ev *), cmp_ev);
+	qsort(table, (size_t) n, sizeof(struct ovni_ev *), cmp_ev);
 	write_events(table, n, buf);
 
 	dbg("first event after sorting %c%c%c at %"PRIu64,
@@ -260,10 +274,36 @@ write_stream(int fd, void *base, void *dst, const void *src, size_t size)
 		if (written < 0)
 			die("pwrite failed:");
 
-		size -= written;
+		size -= (size_t) written;
 		src = (void *) (((uint8_t *) src) + written);
 		dst = (void *) (((uint8_t *) dst) + written);
 	}
+}
+
+static void
+rebuild_ring(struct ring *r, long long start, struct ovni_ev *first, struct ovni_ev *last)
+{
+	long long nbad = 0;
+	long long n = 0;
+	struct ovni_ev *ev = first;
+
+	for (long long i = start; i != r->tail; i = i + 1 >= r->size ? 0 : i + 1) {
+		n++;
+		if (ev != r->ev[i])
+			nbad++;
+
+		if (ev >= last)
+			die("exceeding last pointer");
+
+		r->ev[i] = ev;
+		size_t size = (size_t) ovni_ev_size(ev);
+		ev = (struct ovni_ev *) (((uint8_t *) ev) + size);
+	}
+
+	if (ev != last)
+		die("inconsistency: ev != last");
+
+	dbg("rebuilt ring with %lld / %lld misplaced events", nbad, n);
 }
 
 static int
@@ -289,6 +329,7 @@ execute_sort_plan(struct sortplan *sp)
 
 	/* Set the pointer to the first event that may be affected */
 	struct ovni_ev *first = sp->r->ev[i0];
+	long long dirty = i0;
 
 	/* Allocate a working buffer */
 	uintptr_t bufsize = (uintptr_t) sp->next - (uintptr_t) first;
@@ -300,11 +341,18 @@ execute_sort_plan(struct sortplan *sp)
 	if (!buf)
 		die("malloc failed:");
 
-	sort_buf((uint8_t *) first, buf, bufsize);
+	sort_buf((uint8_t *) first, buf, (int64_t) bufsize);
 
 	write_stream(sp->fd, sp->base, first, buf, bufsize);
 
 	free(buf);
+
+	/* Pointers from the ring buffer are invalid now, rebuild them */
+	rebuild_ring(sp->r, dirty, first, sp->next);
+
+	/* Invariant: The ring buffer is always sorted here. Check from the
+	 * dirty position onwards, so we avoid scanning all events. */
+	ring_check(sp->r, dirty);
 
 	return 0;
 }
@@ -313,7 +361,7 @@ execute_sort_plan(struct sortplan *sp)
 static int
 stream_winsort(struct stream *stream, struct ring *r)
 {
-	char *fn = stream->path;
+	char *fn = stream->obspath;
 	int fd = open(fn, O_WRONLY);
 
 	if (fd < 0)
@@ -435,8 +483,8 @@ process_trace(struct trace *trace)
 	struct ring ring;
 	int ret = 0;
 
-	ring.size = max_look_back;
-	ring.ev = malloc(ring.size * sizeof(struct ovni_ev *));
+	ring.size = (ssize_t) max_look_back;
+	ring.ev = malloc((size_t) ring.size * sizeof(struct ovni_ev *));
 
 	if (ring.ev == NULL)
 		die("malloc failed:");
@@ -511,7 +559,7 @@ parse_args(int argc, char *argv[])
 				operation_mode = CHECK;
 				break;
 			case 'n':
-				max_look_back = atol(optarg);
+				max_look_back = (size_t) atol(optarg);
 				break;
 			default: /* '?' */
 				usage();

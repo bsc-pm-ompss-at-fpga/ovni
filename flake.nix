@@ -15,30 +15,33 @@
       nosv = prev.nosv.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "c668e3bbfae34cd9b8797811b29ae35361b267ca";
+        gitCommit = "3ca2f67993f85aa73c53f810ff12148189eae642";
       };
       nanos6 = prev.nanos6.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "21fccec383a4136daf5919093a6ffcdc8c139bfe";
+        gitCommit = "f39ea57c67a613d098050e2bb251116a021e91e5";
       };
       nodes = prev.nodes.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "70ce0ed0a20842d8eb3124aa5db5916fb6fc238f";
+        gitCommit = "c97d7ca6f885500121a94c75df429c788e8d6cf8";
       };
       clangOmpss2Unwrapped = prev.clangOmpss2Unwrapped.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "b813108e2810c235480688ed7d1b0f1faf76e804";
+        gitCommit = "246e2df2eb10f52e48a57c8165074daecdb623f2";
       };
+      openmp = prev.openmp.overrideAttrs (old: {
+        # Newer version of LLVM OpenMP requires python3
+        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ final.python3 ];
+      });
 
       # Use a fixed commit for libovni
       ovniFixed = prev.ovni.override {
         useGit = true;
         gitBranch = "master";
-        # Includes ovni_attr_* API
-        gitCommit = "d1e8a62396ae92934c0b6e248d5f6ff921bef56f";
+        gitCommit = "3bbfe0f0ecdf58e3f46ebafdf2540680f990b76b";
       };
       # Build with the current source
       ovniLocal = prev.ovni.overrideAttrs (old: rec {
@@ -134,6 +137,11 @@
         preCheck = old.preCheck + ''
           export ASAN_OPTIONS=detect_leaks=0
         '';
+      });
+
+      ubsan = rt.overrideAttrs (old: {
+        pname = "ovni-ubsan";
+        cmakeFlags = old.cmakeFlags ++ [ "-DCMAKE_BUILD_TYPE=Ubsan" ];
       });
 
       armv7 = (pkgs.pkgsCross.armv7l-hf-multiplatform.ovniLocal.overrideAttrs (old: {

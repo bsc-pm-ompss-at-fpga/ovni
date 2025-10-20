@@ -3,13 +3,13 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(OVNI LANGUAGES C VERSION 1.10.0)
+project(OVNI LANGUAGES C VERSION 1.11.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 add_compile_options(-Wall -Wextra -Wformat
   -Wmissing-prototypes -Wstrict-prototypes
-  #-Wconversion -Wsign-conversion
+  -Wconversion -Wsign-conversion
   -Wold-style-definition -pedantic
   -Werror
 )
@@ -67,7 +67,9 @@ set(CMAKE_C_FLAGS_ASAN "${CMAKE_C_FLAGS_DEBUG} \
   -fno-omit-frame-pointer"
   CACHE STRING "Flags used by the C compiler during AddressSanitizer builds." FORCE)
 
-set(CMAKE_C_FLAGS_UBSAN "${CMAKE_C_FLAGS_DEBUG} -fsanitize=undefined"
+set(CMAKE_C_FLAGS_UBSAN "${CMAKE_C_FLAGS_DEBUG} \
+  -fsanitize=undefined \
+  -fno-sanitize-recover=all"
   CACHE STRING "Flags used by the C compiler during UndefinedBehaviorSanitizer builds." FORCE)
 
 find_program(IWYU NAMES include-what-you-use iwyu)

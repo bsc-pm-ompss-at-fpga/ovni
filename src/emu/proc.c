@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #include "proc.h"
@@ -6,82 +6,39 @@
 #include <stdlib.h>
 #include <string.h>
 #include "path.h"
+#include "stream.h"
 #include "thread.h"
 
-static int
-get_pid(const char *id, int *pid)
+int
+proc_stream_get_pid(struct stream *s)
 {
-	/* TODO: Store the PID the metadata.json instead */
+	JSON_Object *meta = stream_metadata(s);
 
-	/* The id must be like "loom.host01.123/proc.345" */
-	if (path_count(id, '/') != 1) {
-		err("proc id can only contain one '/': %s", id);
+	double pid = json_object_dotget_number(meta, "ovni.pid");
+
+	/* Zero is used for errors, so forbidden for pid too */
+	if (pid == 0) {
+		err("cannot get attribute ovni.pid for stream: %s",
+				s->relpath);
 		return -1;
 	}
 
-	/* Get the proc.345 part */
-	const char *procname;
-	if (path_next(id, '/', &procname) != 0) {
-		err("cannot get proc name");
-		return -1;
-	}
-
-	/* Ensure the prefix is ok */
-	const char prefix[] = "proc.";
-	if (!path_has_prefix(procname, prefix)) {
-		err("proc name must start with '%s': %s", prefix, id);
-		return -1;
-	}
-
-	/* Get the 345 part */
-	const char *pidstr;
-	if (path_next(procname, '.', &pidstr) != 0) {
-		err("cannot find proc dot in '%s'", id);
-		return -1;
-	}
-
-	*pid = atoi(pidstr);
-
-	return 0;
+	return (int) pid;
 }
 
 int
-proc_relpath_get_pid(const char *relpath, int *pid)
-{
-	char id[PATH_MAX];
-
-	if (snprintf(id, PATH_MAX, "%s", relpath) >= PATH_MAX) {
-		err("path too long");
-		return -1;
-	}
-
-	if (path_keep(id, 2) != 0) {
-		err("cannot delimite proc dir");
-		return -1;
-	}
-
-	return get_pid(id, pid);
-}
-
-int
-proc_init_begin(struct proc *proc, const char *relpath)
+proc_init_begin(struct proc *proc, int pid)
 {
 	memset(proc, 0, sizeof(struct proc));
 
 	proc->gindex = -1;
+	proc->appid = 0;
+	proc->rank = -1;
+	proc->nranks = 0;
+	proc->pid = pid;
 
-	if (snprintf(proc->id, PATH_MAX, "%s", relpath) >= PATH_MAX) {
+	if (snprintf(proc->id, PATH_MAX, "proc.%d", pid) >= PATH_MAX) {
 		err("path too long");
-		return -1;
-	}
-
-	if (path_keep(proc->id, 2) != 0) {
-		err("cannot delimite proc dir");
-		return -1;
-	}
-
-	if (get_pid(proc->id, &proc->pid) != 0) {
-		err("cannot parse proc pid");
 		return -1;
 	}
 
@@ -102,38 +59,105 @@ proc_set_loom(struct proc *proc, struct loom *loom)
 	proc->loom = loom;
 }
 
-int
-proc_load_metadata(struct proc *proc, JSON_Object *meta)
+static int
+load_appid(struct proc *proc, struct stream *s)
 {
-	if (proc->metadata_loaded) {
-		err("process %s already loaded metadata", proc->id);
+	JSON_Object *meta = stream_metadata(s);
+	JSON_Value *appid_val = json_object_dotget_value(meta, "ovni.app_id");
+
+	/* May not be present in all thread streams */
+	if (appid_val == NULL)
+		return 0;
+
+	int appid = (int) json_number(appid_val);
+	if (proc->appid && proc->appid != appid) {
+		err("mismatch previous appid %d with stream: %s",
+				proc->appid, s->relpath);
 		return -1;
 	}
 
-	JSON_Value *version_val = json_object_get_value(meta, "version");
-	if (version_val == NULL) {
-		err("missing attribute 'version' in metadata");
+	if (appid <= 0) {
+		err("appid must be >0, stream: %s", s->relpath);
 		return -1;
 	}
 
-	proc->metadata_version = (int) json_number(version_val);
+	proc->appid = appid;
+	return 0;
+}
 
-	JSON_Value *appid_val = json_object_get_value(meta, "app_id");
-	if (appid_val == NULL) {
-		err("missing attribute 'app_id' in metadata");
+static int
+load_rank(struct proc *proc, struct stream *s)
+{
+	JSON_Object *meta = stream_metadata(s);
+	JSON_Value *rank_val = json_object_dotget_value(meta, "ovni.rank");
+
+	/* Optional */
+	if (rank_val == NULL) {
+		dbg("process %s has no rank", proc->id);
+		return 0;
+	}
+
+	int rank = (int) json_number(rank_val);
+
+	if (rank < 0) {
+		err("rank %d must be >=0, stream: %s", rank, s->relpath);
 		return -1;
 	}
 
-	proc->appid = (int) json_number(appid_val);
+	if (proc->rank >= 0 && proc->rank != rank) {
+		err("mismatch previous rank %d with stream: %s",
+				proc->rank, s->relpath);
+		return -1;
+	}
 
-	JSON_Value *rank_val = json_object_get_value(meta, "rank");
+	/* Same with nranks, but it is not optional now */
+	JSON_Value *nranks_val = json_object_dotget_value(meta, "ovni.nranks");
+	if (nranks_val == NULL) {
+		err("missing ovni.nranks attribute: %s", s->relpath);
+		return -1;
+	}
 
-	if (rank_val != NULL)
-		proc->rank = (int) json_number(rank_val);
-	else
-		proc->rank = -1;
+	int nranks = (int) json_number(nranks_val);
 
-	proc->metadata_loaded = 1;
+	if (nranks <= 0) {
+		err("nranks %d must be >0, stream: %s", nranks, s->relpath);
+		return -1;
+	}
+
+	if (proc->nranks > 0 && proc->nranks != nranks) {
+		err("mismatch previous nranks %d with stream: %s",
+				proc->nranks, s->relpath);
+		return -1;
+	}
+
+	/* Ensure rank fits in nranks */
+	if (rank >= nranks) {
+		err("rank %d must be lower than nranks %d: %s",
+				rank, nranks, s->relpath);
+		return -1;
+	}
+
+	dbg("process %s rank=%d nranks=%d",
+			proc->id, rank, nranks);
+	proc->rank = rank;
+	proc->nranks = nranks;
+
+	return 0;
+}
+
+/** Merges the metadata from the stream in the process. */
+int
+proc_load_metadata(struct proc *proc, struct stream *s)
+{
+	if (load_appid(proc, s) != 0) {
+		err("load_appid failed for stream: %s", s->relpath);
+		return -1;
+	}
+
+	if (load_rank(proc, s) != 0) {
+		err("load_rank failed for stream: %s", s->relpath);
+		return -1;
+	}
 
 	return 0;
 }
@@ -197,8 +221,8 @@ proc_init_end(struct proc *proc)
 		return -1;
 	}
 
-	if (!proc->metadata_loaded) {
-		err("metadata not loaded");
+	if (proc->appid <= 0) {
+		err("appid not set");
 		return -1;
 	}
 

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2024-11-08
+
+### Added
+
+- Introduce part model.
+- Support for `nosv_cond_wait`, `nosv_cond_signal` and `nosv_cond_broadcast` events VA{oOgGkK}.
+
+### Changed
+
+- Enable -Wconversion and -Wsign-conversion.
+- Update trace format to version 3.
+- The ovni.require metadata key is now mandatory.
+- Store process metadata in thread metadata.
+- nOS-V model version increased to 2.4.0.
+
+### Fixed
+
+- Fix bug in ovnisort when injecting events in a previously modified section.
+
 ## [1.10.0] - 2024-07-26
 
 ### Changed
@@ -266,6 +285,7 @@ are used along with some other changes.
 - First ovni release.
 
 [unreleased]: https://jungle.bsc.es/git/rarias/ovni
+[1.11.0]: https://github.com/rodarima/ovni/releases/tag/1.11.0
 [1.10.0]: https://github.com/rodarima/ovni/releases/tag/1.10.0
 [1.9.1]: https://github.com/rodarima/ovni/releases/tag/1.9.1
 [1.9.0]: https://github.com/rodarima/ovni/releases/tag/1.9.0
