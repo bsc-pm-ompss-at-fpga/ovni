@@ -1,7 +1,7 @@
 # Emulator events
 
 This is a exhaustive list of the events recognized by the emulator.
-Built on Jun 17 2024.
+Built on May  2 2025.
 
 ## Model nanos6
 
@@ -437,7 +437,7 @@ List of events for the model *ovni* with identifier **`O`** at version `1.1.0`:
 
 ## Model openmp
 
-List of events for the model *openmp* with identifier **`P`** at version `1.1.0`:
+List of events for the model *openmp* with identifier **`P`** at version `1.2.1`:
 <dl>
 <dt><a id="PBb" href="#PBb"><pre>PBb</pre></a></dt>
 <dd>begins plain barrier</dd>
@@ -563,6 +563,18 @@ List of events for the model *openmp* with identifier **`P`** at version `1.1.0`
 <dd>begins initialization</dd>
 <dt><a id="PCI" href="#PCI"><pre>PCI</pre></a></dt>
 <dd>ceases initialization</dd>
+<dt><a id="POc" href="#POc"><pre>POc+(u32 typeid, str label)</pre></a></dt>
+<dd>creates a type %{typeid} with label &quot;%{label}&quot;</dd>
+<dt><a id="PPc" href="#PPc"><pre>PPc(u32 taskid, u32 typeid)</pre></a></dt>
+<dd>creates the task %{taskid} with type %{typeid}</dd>
+<dt><a id="PPx" href="#PPx"><pre>PPx(u32 taskid)</pre></a></dt>
+<dd>executes the task %{taskid}</dd>
+<dt><a id="PPe" href="#PPe"><pre>PPe(u32 taskid)</pre></a></dt>
+<dd>ends the task %{taskid}</dd>
+<dt><a id="PQx" href="#PQx"><pre>PQx(u32 typeid)</pre></a></dt>
+<dd>begins worksharing with type %{typeid}</dd>
+<dt><a id="PQe" href="#PQe"><pre>PQe(u32 typeid)</pre></a></dt>
+<dd>ends worksharing with type %{typeid}</dd>
 </dl>
 
 ## Model tampi
@@ -621,7 +633,7 @@ List of events for the model *tampi* with identifier **`T`** at version `1.0.0`:
 
 ## Model nosv
 
-List of events for the model *nosv* with identifier **`V`** at version `2.4.0`:
+List of events for the model *nosv* with identifier **`V`** at version `2.5.1`:
 <dl>
 <dt><a id="VTc" href="#VTc"><pre>VTc(u32 taskid, u32 typeid)</pre></a></dt>
 <dd>creates task %{taskid} with type %{typeid}</dd>
@@ -648,9 +660,13 @@ List of events for the model *nosv* with identifier **`V`** at version `2.4.0`:
 <dt><a id="VSf" href="#VSf"><pre>VSf</pre></a></dt>
 <dd>is no longer hungry</dd>
 <dt><a id="VS[" href="#VS["><pre>VS[</pre></a></dt>
-<dd>enters scheduler server mode</dd>
+<dd>enters scheduler server blocking mode</dd>
 <dt><a id="VS]" href="#VS]"><pre>VS]</pre></a></dt>
-<dd>leaves scheduler server mode</dd>
+<dd>leaves scheduler server blocking mode</dd>
+<dt><a id="VSN" href="#VSN"><pre>VSN</pre></a></dt>
+<dd>enters scheduler server non-blocking mode</dd>
+<dt><a id="VSn" href="#VSn"><pre>VSn</pre></a></dt>
+<dd>leaves scheduler server non-blocking mode</dd>
 <dt><a id="VU[" href="#VU["><pre>VU[</pre></a></dt>
 <dd>starts submitting a task</dd>
 <dt><a id="VU]" href="#VU]"><pre>VU]</pre></a></dt>

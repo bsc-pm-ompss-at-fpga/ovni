@@ -9,7 +9,7 @@ int main(void)
 {
 	#pragma omp parallel
 	{
-		#pragma omp for
+		#pragma omp for label("static-for-1")
 		for (int i = 0; i < 100; i++) {
 			sleep_us(1);
 		}
@@ -26,7 +26,7 @@ int main(void)
 			{ sleep_us(104); printf("104\n"); }
 		}
 
-		#pragma omp for
+		#pragma omp for label("static-for-2")
 		for (int i = 0; i < 100; i++) {
 			sleep_us(1);
 		}
@@ -34,7 +34,7 @@ int main(void)
 		#pragma omp single
 		for (int i = 0; i < 100; i++)
 		{
-			#pragma omp task
+			#pragma omp task label("mini-task")
 			sleep_us(10);
 		}
 	}
@@ -46,11 +46,11 @@ int main(void)
 
 		#pragma omp barrier
 
-		#pragma omp for
+		#pragma omp for label("static-for-3")
 		for (int i = 0; i < 100; i++) {
 			sleep_us(1);
 		}
-		#pragma omp for schedule(dynamic, 1)
+		#pragma omp for schedule(dynamic, 1) label("dynamic-for")
 		for (int i = 0; i < 100; i++) {
 			sleep_us(i);
 		}

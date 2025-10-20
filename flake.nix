@@ -1,5 +1,5 @@
 {
-  inputs.nixpkgs.url = "nixpkgs";
+  inputs.nixpkgs.url = "nixpkgs/9c6b49aeac36e2ed73a8c472f1546f6d9cf1addc";
   inputs.bscpkgs.url = "git+https://git.sr.ht/~rodarima/bscpkgs";
   inputs.bscpkgs.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -15,7 +15,7 @@
       nosv = prev.nosv.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "3ca2f67993f85aa73c53f810ff12148189eae642";
+        gitCommit = "83e7a1873b4f7b9e7226e8fda8985c7f33915fa1";
       };
       nanos6 = prev.nanos6.override {
         useGit = true;
@@ -30,11 +30,27 @@
       clangOmpss2Unwrapped = prev.clangOmpss2Unwrapped.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "246e2df2eb10f52e48a57c8165074daecdb623f2";
+        gitCommit = "6ea3824988abf00ead8084994a922182bf5fd8ba";
       };
-      openmp = prev.openmp.overrideAttrs (old: {
-        # Newer version of LLVM OpenMP requires python3
-        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ final.python3 ];
+      mpi = prev.mpich;
+      bench6 = prev.bench6.overrideAttrs (old: rec {
+        src = builtins.fetchGit {
+          url = "ssh://git@bscpm04.bsc.es/rarias/bench6.git";
+          ref = "master";
+          rev = "14227b1aa5a17deb5b746eb9648de2eb89fe3521";
+        };
+        version = src.shortRev;
+        cmakeFlags = [ "-DCMAKE_C_COMPILER=clang" "-DCMAKE_CXX_COMPILER=clang++" ];
+        env = with final; {
+          NANOS6_HOME = nanos6;
+          NODES_HOME = nodes;
+          NOSV_HOME = nosv;
+        };
+        buildInputs = with final; [ bigotes cmake clangOmpss2 openmp openmpv
+          nanos6 nodes nosv mpi tampi tagaspi gpi-2 openblas openblas.dev ovni
+        ];
+        hardeningDisable = [ "all" ];
+        dontStrip = true;
       });
 
       # Use a fixed commit for libovni
@@ -62,14 +78,15 @@
     };
     compilerList = with pkgs; [
       #gcc49Stdenv # broken
-      gcc6Stdenv
-      gcc7Stdenv
-      gcc8Stdenv
+      #gcc6Stdenv # deprecated
+      #gcc7Stdenv # deprecated
+      #gcc8Stdenv # deprecated
       gcc9Stdenv
       gcc10Stdenv
       gcc11Stdenv
       gcc12Stdenv
       gcc13Stdenv
+      gcc14Stdenv
     ];
     lib = pkgs.lib;
   in {
@@ -119,7 +136,9 @@
         # We need to be able to exit the chroot to run Nanos6 tests, as they
         # require access to /sys for hwloc
         __noChroot = true;
-        buildInputs = old.buildInputs ++ (with pkgs; [ pkg-config nosv nanos6 nodes openmpv ]);
+        buildInputs = old.buildInputs ++ (with pkgs; [
+          pkg-config nosv nanos6 nodes openmpv bench6
+        ]);
         cmakeFlags = old.cmakeFlags ++ [ "-DENABLE_ALL_TESTS=ON" ];
         preConfigure = old.preConfigure or "" + ''
           export NOSV_HOME="${pkgs.nosv}"

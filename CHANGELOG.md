@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2025-05-08
+
+### Changed
+
+- OpenMP model version increased to 1.2.1.
+- nOS-V model version increased to 2.5.1.
+
+### Added
+
+- Add support OpenMP label and task ID views.
+- Add support for nOS-V non-blocking scheduler server events (`VSN` and `VSn`).
+- Add OpenMP simple breakdown view.
+- Add bench6 package to run full mini-apps for tests.
+
 ## [1.11.0] - 2024-11-08
 
 ### Added
@@ -285,6 +299,7 @@ are used along with some other changes.
 - First ovni release.
 
 [unreleased]: https://jungle.bsc.es/git/rarias/ovni
+[1.12.0]: https://github.com/rodarima/ovni/releases/tag/1.12.0
 [1.11.0]: https://github.com/rodarima/ovni/releases/tag/1.11.0
 [1.10.0]: https://github.com/rodarima/ovni/releases/tag/1.10.0
 [1.9.1]: https://github.com/rodarima/ovni/releases/tag/1.9.1

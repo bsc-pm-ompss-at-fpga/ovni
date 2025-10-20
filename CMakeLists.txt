@@ -1,9 +1,9 @@
-# Copyright (c) 2021-2024 Barcelona Supercomputing Center (BSC)
+# Copyright (c) 2021-2025 Barcelona Supercomputing Center (BSC)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.20)
 
-project(OVNI LANGUAGES C VERSION 1.11.0)
+project(OVNI LANGUAGES C VERSION 1.12.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
@@ -79,7 +79,7 @@ if(IWYU)
   set(CMAKE_C_INCLUDE_WHAT_YOU_USE ${IWYU_CMD})
   message(STATUS "IWYU found")
 else()
-  message(WARNING "IWYU not found, skipping")
+  message(STATUS "IWYU not found, skipping")
 endif()
 
 # Required for clock_gettime() in glibc <= 2.17
@@ -95,6 +95,14 @@ if (NOT HAVE_CLOCK_GETTIME)
     message(FATAL_ERROR "cannot find clock_gettime()")
   endif()
 endif()
+
+# Check packages and features once
+find_package(Nanos6)
+find_package(Nodes)
+find_package(Nosv)
+find_package(Libompv)
+include(CheckPerfParanoid)
+include(CheckOmpSs2Compiler)
 
 add_subdirectory(include)
 add_subdirectory(src)

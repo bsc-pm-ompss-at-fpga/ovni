@@ -1,17 +1,21 @@
-/* Copyright (c) 2023-2024 Barcelona Supercomputing Center (BSC)
+/* Copyright (c) 2023-2025 Barcelona Supercomputing Center (BSC)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 
 #ifndef OPENMP_PRIV_H
 #define OPENMP_PRIV_H
 
 #include "emu.h"
+#include "task.h"
 #include "model_cpu.h"
 #include "model_thread.h"
+#include "breakdown.h"
 
 /* Private enums */
 
 enum openmp_chan {
 	CH_SUBSYSTEM = 0,
+	CH_LABEL,
+	CH_TASKID,
 	CH_MAX,
 };
 
@@ -55,10 +59,21 @@ enum openmp_function_values {
 
 struct openmp_thread {
 	struct model_thread m;
+	struct task_stack task_stack;
 };
 
 struct openmp_cpu {
 	struct model_cpu m;
+	struct breakdown_cpu breakdown;
+};
+
+struct openmp_proc {
+	/* Shared among tasks and ws */
+	struct task_info task_info;
+};
+
+struct openmp_emu {
+	struct breakdown_emu breakdown;
 };
 
 int model_openmp_probe(struct emu *emu);
@@ -66,5 +81,10 @@ int model_openmp_create(struct emu *emu);
 int model_openmp_connect(struct emu *emu);
 int model_openmp_event(struct emu *emu);
 int model_openmp_finish(struct emu *emu);
+
+int model_openmp_breakdown_create(struct emu *emu);
+int model_openmp_breakdown_connect(struct emu *emu);
+int model_openmp_breakdown_finish(struct emu *emu,
+		const struct pcf_value_label **labels);
 
 #endif /* OPENMP_PRIV_H */
