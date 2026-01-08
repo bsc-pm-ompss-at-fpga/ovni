@@ -1,11 +1,9 @@
 {
-  inputs.nixpkgs.url = "nixpkgs/9c6b49aeac36e2ed73a8c472f1546f6d9cf1addc";
-  inputs.bscpkgs.url = "git+https://git.sr.ht/~rodarima/bscpkgs";
-  inputs.bscpkgs.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.jungle.url = "git+https://jungle.bsc.es/git/rarias/jungle";
 
   nixConfig.bash-prompt = "\[nix-develop\]$ ";
 
-  outputs = { self, nixpkgs, bscpkgs }:
+  outputs = { self, jungle }:
   let
     # Set to true to replace all libovni in all runtimes with the current
     # source. Causes large rebuilds on changes of ovni.
@@ -15,7 +13,7 @@
       nosv = prev.nosv.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "83e7a1873b4f7b9e7226e8fda8985c7f33915fa1";
+        gitCommit = "badfdec9b438c2d4a0989c0a9ff5513223a8ed85";
       };
       nanos6 = prev.nanos6.override {
         useGit = true;
@@ -25,12 +23,12 @@
       nodes = prev.nodes.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "c97d7ca6f885500121a94c75df429c788e8d6cf8";
+        gitCommit = "2fc2fd686a6c0f831323ff47c15480688f9b21ea";
       };
       clangOmpss2Unwrapped = prev.clangOmpss2Unwrapped.override {
         useGit = true;
         gitBranch = "master";
-        gitCommit = "6ea3824988abf00ead8084994a922182bf5fd8ba";
+        gitCommit = "872ba63f86edaefc9787984ef3fae9f2f94e0124";
       };
       mpi = prev.mpich;
       bench6 = prev.bench6.overrideAttrs (old: rec {
@@ -69,10 +67,10 @@
       # Select correct ovni for libovni
       ovni = if (useLocalOvni) then final.ovniLocal else final.ovniFixed;
     };
-    pkgs = import nixpkgs {
+    pkgs = import jungle.inputs.nixpkgs {
       system = "x86_64-linux";
       overlays = [
-        bscpkgs.bscOverlay
+        jungle.bscOverlay
         ovniOverlay
       ];
     };

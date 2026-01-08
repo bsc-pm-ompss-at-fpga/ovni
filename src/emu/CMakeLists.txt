@@ -39,6 +39,7 @@ add_library(emu STATIC
   pv/prv.c
   pv/pvt.c
   pv/cfg.c
+  pv/cfg_file.c
   recorder.c
   system.c
   task.c
@@ -53,8 +54,9 @@ add_library(emu STATIC
   nanos6/event.c
   nanos6/breakdown.c
   nosv/breakdown.c
-  nosv/setup.c
   nosv/event.c
+  nosv/hwc.c
+  nosv/setup.c
   nodes/setup.c
   nodes/event.c
   mpi/setup.c

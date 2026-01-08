@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2025-10-24
+
+### Added
+
+- Add support for hardware counters (HWC) in nOS-V.
+- Add user documentation for NODES instrumentation.
+
+### Changed
+
+- Increase nOS-V model version to 2.6.0.
+
+### Fixed
+
+- Fix a bug in ovniemu when loading loom CPUs from multiple threads.
+
 ## [1.12.0] - 2025-05-08
 
 ### Changed
@@ -299,6 +314,7 @@ are used along with some other changes.
 - First ovni release.
 
 [unreleased]: https://jungle.bsc.es/git/rarias/ovni
+[1.13.0]: https://github.com/rodarima/ovni/releases/tag/1.13.0
 [1.12.0]: https://github.com/rodarima/ovni/releases/tag/1.12.0
 [1.11.0]: https://github.com/rodarima/ovni/releases/tag/1.11.0
 [1.10.0]: https://github.com/rodarima/ovni/releases/tag/1.10.0
